@@ -1,6 +1,6 @@
 # Chat privado — instruções rápidas
 
-App de chat simples, rodando local na sua máquina, com busca na web e upload de arquivo.
+App de chat simples, rodando local na máquina, com busca na web e upload de arquivo.
 Sem login (uso combinado: só você compartilha o link com a pessoa).
 
 ## 1. Configurar (uma vez só)
@@ -43,7 +43,7 @@ ngrok http 3000
 ```
 Ele te dá um link tipo `https://abcd1234.ngrok-free.app`.
 
-## 4. Quando acabar (depois dos 2 dias)
+## 4. Quando concluir o uso
 
 - Aperta `Ctrl+C` nos dois terminais (servidor e túnel).
 - O link para de funcionar na hora.
