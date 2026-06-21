@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nando's GPT</title>
+  <style>
+    :root {
+      --bg: #faf9f7;
+      --panel: #ffffff;
+      --ink: #1c1b19;
+      --ink-soft: #6b6863;
+      --border: #e8e5e0;
+      --accent: #2d2a26;
+      --user-bubble: #2d2a26;
+      --user-text: #faf9f7;
+      --bot-bubble: #f1efeb;
+      --radius: 14px;
+      --sidebar-w: 280px;
+      --header-h: 57px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      height: 100dvh;
+      /* dvh: respeita barra de endereço móvel */
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      flex-shrink: 0;
+      /* Transição suave de abertura/fechamento no mobile */
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 200;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #new-chat-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s;
+      /* Alvo de toque mínimo recomendado (48px) */
+      min-height: 44px;
+    }
+
+    #new-chat-btn:hover {
+      background: var(--border);
+    }
+
+    .sidebar-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .conv-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+      min-height: 52px;
+      /* alvo de toque adequado */
+    }
+
+    .conv-item:hover {
+      background: var(--bg);
+    }
+
+    .conv-item.active {
+      background: var(--bot-bubble);
+    }
+
+    .conv-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .conv-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .conv-date {
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+
+    .conv-delete {
+      background: none;
+      border: none;
+      color: var(--ink-soft);
+      cursor: pointer;
+      padding: 6px;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-left: 6px;
+      min-width: 32px;
+      min-height: 32px;
+    }
+
+    .conv-item:hover .conv-delete {
+      opacity: 1;
+    }
+
+    .conv-delete:hover {
+      color: #d32f2f;
+      background: rgba(211, 47, 47, 0.1);
+    }
+
+    /* Overlay escuro por trás do drawer (só mobile) */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 199;
+      opacity: 0;
+      pointer-events: none; /* Não bloqueia cliques enquanto invisível */
+      transition: opacity 0.28s;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       ÁREA PRINCIPAL
+    ═══════════════════════════════════════════════════ */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      height: 100dvh;
+      min-width: 0;
+    }
+
+    header {
+      padding: 0 16px;
+      height: var(--header-h);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: 0.01em;
+    }
+
+    /* Botão hambúrguer — oculto no desktop */
+    #menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--ink);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      margin-right: 4px;
+      min-width: 40px;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #menu-btn:hover {
+      background: var(--bot-bubble);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    header .status {
+      font-size: 12px;
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    header .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4caf6d;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    #reset-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--ink-soft);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #reset-btn:hover {
+      background: var(--bot-bubble);
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 20px 16px 140px;
+    }
+
+    .messages {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .empty-state {
+      max-width: 420px;
+      margin: 60px auto 0;
+      text-align: center;
+      color: var(--ink-soft);
+      padding: 0 8px;
+    }
+
+    .empty-state svg {
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 85%;
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .bubble {
+      padding: 11px 15px;
+      border-radius: var(--radius);
+      font-size: 14.5px;
+      line-height: 1.57;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .msg.user .bubble {
+      background: var(--user-bubble);
+      color: var(--user-text);
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.bot .bubble {
+      background: var(--bot-bubble);
+      color: var(--ink);
+      border-bottom-left-radius: 4px;
+    }
+
+    .files-tag {
+      font-size: 11px;
+      color: var(--ink-soft);
+      margin-top: 4px;
+    }
+
+    /* ── Botão de download ── */
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 9px 15px;
+      background: var(--accent);
+      color: #faf9f7;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: opacity 0.15s;
+      cursor: pointer;
+      /* Alvo de toque adequado */
+      min-height: 44px;
+    }
+
+    .download-btn:hover {
+      opacity: 0.82;
+    }
+
+    .download-btn svg {
+      flex-shrink: 0;
+    }
+
+    /* ── Indicador de digitação ── */
+    .thinking {
+      display: flex;
+      gap: 4px;
+      padding: 14px 16px;
+    }
+
+    .thinking span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ink-soft);
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .thinking span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .thinking span:nth-child(3) {
+      animation-delay: 0.30s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      60%,
+      100% {
+        transform: translateY(0);
+        opacity: 0.5;
+      }
+
+      30% {
+        transform: translateY(-4px);
+        opacity: 1;
+      }
+    }
+
+    /* ── Composer / Footer ── */
+    footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 16px;
+      /* Respeita o safe-area do iPhone (home indicator) */
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      background: linear-gradient(to top, var(--bg) 65%, transparent);
+    }
+
+    .composer {
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 6px 6px 14px;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    #file-chip-row {
+      max-width: 720px;
+      margin: 0 auto 8px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      background: var(--bot-bubble);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1;
+      padding: 2px 4px;
+    }
+
+    textarea {
+      flex: 1;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.5;
+      background: transparent;
+      color: var(--ink);
+      max-height: 140px;
+      padding: 8px 0;
+      /* Evita zoom automático no iOS (fonte ≥ 16px seria mais seguro, mas 15px + user-scalable=no funciona) */
+    }
+
+    textarea::placeholder {
+      color: var(--ink-soft);
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    #attach-btn {
+      background: transparent;
+      color: var(--ink-soft);
+    }
+
+    #attach-btn:hover {
+      background: var(--bot-bubble);
+    }
+
+    #send-btn {
+      background: var(--accent);
+      color: white;
+    }
+
+    #send-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    #send-btn:not(:disabled):hover {
+      opacity: 0.85;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    /* ── Toggle busca na web ── */
+    .web-search-btn {
+      background: transparent;
+      color: var(--ink-soft);
+      position: relative;
+      transition: color 0.15s, background 0.15s;
+    }
+    .web-search-btn:hover { background: var(--bot-bubble); }
+    .web-search-btn[aria-pressed="true"] {
+      color: var(--accent);
+    }
+    .web-search-btn[aria-pressed="false"] {
+      color: var(--border);
+    }
+    /* Riscado quando desativado */
+    .web-search-btn[aria-pressed="false"]::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 60%; height: 2px;
+      background: var(--ink-soft);
+      transform: translate(-50%, -50%) rotate(-45deg);
+      border-radius: 1px;
+    }
+
+    /* ── Ícone no título ── */
+    header h1 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .title-icon {
+      color: var(--ink-soft);
+      flex-shrink: 0;
+    }
+
+    /* ── Badge de status da busca na web ── */
+    .web-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid transparent;
+      transition: color 0.2s, background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+      cursor: default;
+    }
+    .web-status.on {
+      color: #2e7d4f;
+      background: #e8f5ee;
+      border-color: #b7dfca;
+    }
+    .web-status.off {
+      color: var(--ink-soft);
+      background: var(--bg);
+      border-color: var(--border);
+      text-decoration: line-through;
+      text-decoration-color: var(--ink-soft);
+    }
+    .web-status svg {
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+    .web-status.off svg {
+      opacity: 0.4;
+    }
+
+    /* ── Rodapé da sidebar ── */
+    .sidebar-footer {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #burn-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+      min-height: 36px;
+    }
+    #burn-btn:hover {
+      color: #c62828;
+      border-color: rgba(198, 40, 40, 0.3);
+      background: rgba(198, 40, 40, 0.05);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESPONSIVIDADE — MOBILE  (< 640px)
+    ═══════════════════════════════════════════════════ */
+    @media (max-width: 639px) {
+
+      /* Sidebar vira drawer off-canvas */
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100dvh;
+        transform: translateX(-100%);
+        /* começa oculta */
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+      }
+
+      /* Quando aberta */
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      /* Overlay ativo no mobile */
+      .sidebar-overlay {
+        display: block;
+        pointer-events: none; /* Invisível = não bloqueia */
+      }
+
+      .sidebar-overlay.visible {
+        opacity: 1;
+        pointer-events: auto; /* Só captura cliques quando aberto */
+      }
+
+      /* Hambúrguer aparece */
+      #menu-btn {
+        display: flex;
+      }
+
+      /* Status fica oculto no header para economizar espaço */
+      header .status {
+        display: none;
+      }
+
+      /* Bolhas ocupam mais largura */
+      .msg {
+        max-width: 92%;
+      }
+
+      /* Área de mensagens com menos padding lateral */
+      main {
+        padding: 16px 10px 140px;
+      }
+
+      /* Footer sem espaçamento lateral excessivo */
+      footer {
+        padding: 10px 10px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+      }
+
+      /* Lixeira sempre visível no mobile (sem :hover) */
+      .conv-delete {
+        opacity: 1;
+        color: var(--ink-soft);
+      }
+
+      /* Fonte do textarea maior para evitar zoom no iOS */
+      textarea {
+        font-size: 16px;
+      }
+
+      /* Empty state com menos margem no topo */
+      .empty-state {
+        margin-top: 40px;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESPONSIVIDADE — TABLET  (640px – 1024px)
+    ═══════════════════════════════════════════════════ */
+    @media (min-width: 640px) and (max-width: 1023px) {
+      :root {
+        --sidebar-w: 240px;
+      }
+
+      .msg {
+        max-width: 90%;
+      }
+
+      main {
+        padding: 20px 14px 140px;
+      }
+
+      /* Lixeira visível com tap em tablets (sem hover confiável) */
+      @media (hover: none) {
+        .conv-delete {
+          opacity: 1;
+        }
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Overlay do drawer (mobile) -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <button id="new-chat-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Nova conversa
+      </button>
+    </div>
+    <div class="sidebar-list" id="sidebar-list"></div>
+    <!-- Rodapé da sidebar: queima de arquivo -->
+    <div class="sidebar-footer">
+      <button id="burn-btn" title="Apagar todo o histórico">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Cano/Corpo superior -->
+          <path d="M3 8h17v4H3z" />
+          <!-- Cabo/Empunhadura -->
+          <path d="M15 12l-2.5 9h-4l1.5-9" />
+          <!-- Guarda-mato -->
+          <path d="M10 12c-1.5 0-3 1-3 3s1.5 2 3 2c1 0 1.5-.5 1.5-1.5" />
+          <!-- Gatilho -->
+          <path d="M10.5 13.5c.3.5.7.5 1-1" />
+          <!-- Mira dianteira -->
+          <path d="M4 8V7" />
+          <!-- Mira traseira -->
+          <path d="M19 8V7" />
+        </svg>
+        Queima de arquivo
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header>
+      <div class="header-left">
+        <!-- Hambúrguer (só visível no mobile via CSS) -->
+        <button id="menu-btn" aria-label="Abrir menu de conversas" aria-expanded="false" aria-controls="sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <h1>
+          <!-- Máscara Guy Fawkes / Anonymous -->
+          <svg class="title-icon" width="18" height="22" viewBox="0 0 100 120" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <!-- Rosto -->
+            <ellipse cx="50" cy="54" rx="42" ry="50"/>
+            <!-- Olho esquerdo -->
+            <ellipse cx="31" cy="44" rx="12" ry="9"/>
+            <!-- Olho direito -->
+            <ellipse cx="69" cy="44" rx="12" ry="9"/>
+            <!-- Sobrancelha esquerda (arqueada) -->
+            <path d="M16 30 Q31 20 46 27"/>
+            <!-- Sobrancelha direita (arqueada) -->
+            <path d="M54 27 Q69 20 84 30"/>
+            <!-- Bochechas rosadas -->
+            <ellipse cx="19" cy="62" rx="8" ry="6" fill="currentColor" stroke="none" opacity=".15"/>
+            <ellipse cx="81" cy="62" rx="8" ry="6" fill="currentColor" stroke="none" opacity=".15"/>
+            <!-- Bigode curvo (signature do Guy Fawkes) -->
+            <path d="M28 73 Q38 66 50 71 Q62 66 72 73"/>
+            <path d="M28 73 Q22 80 25 87"/>
+            <path d="M72 73 Q78 80 75 87"/>
+            <!-- Cavanhaque pontudo -->
+            <path d="M37 88 Q50 115 63 88"/>
+          </svg>
+          Nando's GPT
+        </h1>
+      </div>
+      <div class="header-right">
+        <span class="status"><span class="dot"></span>conectado</span>
+        <span id="web-search-status" class="web-status on" title="Busca na web ativada">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          web
+        </span>
+        <button id="reset-btn">Limpar tela</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="messages" id="messages">
+        <div class="empty-state" id="empty-state">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          <p>Mande sua pergunta, ou anexe um arquivo para análise.<br>Busca na web habilitada.<br></p>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div id="file-chip-row"></div>
+      <div class="composer">
+        <button id="attach-btn" class="icon-btn" title="Anexar arquivo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path
+              d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+          </svg>
+        </button>
+        <input type="file" id="file-input" multiple />
+        <textarea id="input" placeholder="Escreva uma mensagem..." rows="1"></textarea>
+        <!-- Toggle busca na web -->
+        <button id="web-search-btn" class="icon-btn web-search-btn" title="Busca na web: ativada" aria-pressed="true">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </button>
+        <button id="send-btn" class="icon-btn" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13" />
+            <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+          </svg>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const emptyState = document.getElementById('empty-state');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send-btn');
+    const attachBtn = document.getElementById('attach-btn');
+    const fileInput = document.getElementById('file-input');
+    const fileChipRow = document.getElementById('file-chip-row');
+    const resetBtn = document.getElementById('reset-btn');
+    const mainEl = document.getElementById('main');
+    const sidebarList = document.getElementById('sidebar-list');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const sidebar = document.getElementById('sidebar');
+    const menuBtn = document.getElementById('menu-btn');
+    const overlay = document.getElementById('sidebar-overlay');
+    const webSearchBtn = document.getElementById('web-search-btn');
+    const burnBtn = document.getElementById('burn-btn');
+
+    let pendingFiles = [];
+    let currentConversationId = null;
+    let webSearchEnabled = true; // estado do toggle de busca
+
+    // ── Drawer mobile ─────────────────────────────────────────────────────────
+    function openSidebar() {
+      sidebar.classList.add('open');
+      overlay.classList.add('visible');
+      menuBtn.setAttribute('aria-expanded', 'true');
+      // Trava o scroll do body enquanto drawer estiver aberto
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('visible');
+      menuBtn.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+
+    // Fecha ao pressionar Escape
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeSidebar();
+    });
+
+    // ── Utilitário de data relativa ───────────────────────────────────────────
+    function timeAgo(ms) {
+      const diff = Date.now() - ms;
+      const min = Math.floor(diff / 60000);
+      const h = Math.floor(min / 60);
+      const d = Math.floor(h / 24);
+      if (min < 1) return 'agora mesmo';
+      if (min < 60) return `há ${min} min`;
+      if (h < 24) return `há ${h} h`;
+      if (d === 1) return 'ontem';
+      return `há ${d} dias`;
+    }
+
+    // ── Ícone de download por extensão ────────────────────────────────────────
+    function downloadIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      const icons = {
+        docx: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+        xlsx: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
+        pdf: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+      };
+      return icons[ext] || icons.pdf;
+    }
+
+    // ── Renderiza bolha do bot (com suporte a [DOWNLOAD:...]) ─────────────────
+    function renderBotBubble(text, downloadMarker) {
+      const msg = document.createElement('div');
+      msg.className = 'msg bot';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+
+      if (downloadMarker) {
+        const match = downloadMarker.match(/\[DOWNLOAD:([^:]+):([^\]]+)\]/);
+        if (match) {
+          const filename = match[1];
+          const url = match[2];
+          const link = document.createElement('a');
+          link.className = 'download-btn';
+          link.href = url;
+          link.download = filename;
+          link.target = '_blank';
+          link.innerHTML = `${downloadIcon(filename)} Baixar ${filename}`;
+          msg.appendChild(link);
+        }
+      }
+
+      messagesEl.appendChild(msg);
+      mainEl.scrollTop = mainEl.scrollHeight;
+    }
+
+    // ── Lista de conversas na sidebar ─────────────────────────────────────────
+    async function loadConversations() {
+      try {
+        const res = await fetch('/api/conversations');
+        const convs = await res.json();
+        sidebarList.innerHTML = '';
+
+        convs.forEach(c => {
+          const div = document.createElement('div');
+          div.className = `conv-item${c.id === currentConversationId ? ' active' : ''}`;
+          div.onclick = () => {
+            loadConversation(c.id);
+            closeSidebar(); // fecha drawer ao selecionar no mobile
+          };
+
+          const info = document.createElement('div');
+          info.className = 'conv-info';
+
+          const title = document.createElement('div');
+          title.className = 'conv-title';
+          title.textContent = c.title;
+          title.title = c.title;
+
+          const date = document.createElement('div');
+          date.className = 'conv-date';
+          date.textContent = timeAgo(c.updatedAt);
+
+          info.append(title, date);
+
+          const del = document.createElement('button');
+          del.className = 'conv-delete';
+          del.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/></svg>';
+          del.title = 'Excluir conversa';
+          del.setAttribute('aria-label', `Excluir conversa: ${c.title}`);
+          del.onclick = async e => {
+            e.stopPropagation();
+            if (!confirm('Apagar esta conversa?')) return;
+            await fetch(`/api/conversations/${c.id}`, { method: 'DELETE' });
+            if (currentConversationId === c.id) startNewConversation();
+            else loadConversations();
+          };
+
+          div.append(info, del);
+          sidebarList.appendChild(div);
+        });
+      } catch (e) { console.error('Erro ao carregar conversas:', e); }
+    }
+
+    function startNewConversation() {
+      currentConversationId = null;
+      messagesEl.innerHTML = '';
+      messagesEl.appendChild(emptyState);
+      emptyState.style.display = 'block';
+      closeSidebar();
+      loadConversations();
+    }
+
+    async function loadConversation(id) {
+      currentConversationId = id;
+      try {
+        const res = await fetch(`/api/conversations/${id}`);
+        if (!res.ok) throw new Error();
+        const conv = await res.json();
+
+        messagesEl.innerHTML = '';
+        emptyState.style.display = 'none';
+
+        conv.messages.forEach(msg => {
+          if (msg.role === 'user') {
+            const textBlocks = msg.content.filter(c => c.type === 'text').map(c => c.text);
+            const fileBlocks = msg.content.filter(c => c.type !== 'text');
+            const fileNames = fileBlocks.length ? [`${fileBlocks.length} arquivo(s) anexado(s)`] : [];
+            addMessage('user', textBlocks.join('\n'), fileNames);
+          } else if (msg.role === 'assistant') {
+            const raw = msg.content.filter(c => c.type === 'text').map(c => c.text).join('\n\n');
+            const dlMatch = raw.match(/(\[DOWNLOAD:[^\]]+\])/);
+            const cleanText = dlMatch ? raw.replace(dlMatch[0], '').trim() : raw;
+            renderBotBubble(cleanText, dlMatch ? dlMatch[0] : null);
+          }
+        });
+
+        loadConversations();
+      } catch {
+        alert('Não foi possível carregar a conversa.');
+      }
+    }
+
+    // ── Composer ──────────────────────────────────────────────────────────────
+    function autoGrow() {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+    }
+
+    input.addEventListener('input', () => {
+      autoGrow();
+      sendBtn.disabled = !input.value.trim() && pendingFiles.length === 0;
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    attachBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      pendingFiles = [...pendingFiles, ...fileInput.files];
+      renderChips();
+      sendBtn.disabled = !input.value.trim() && pendingFiles.length === 0;
+      fileInput.value = '';
+    });
+
+    function renderChips() {
+      fileChipRow.innerHTML = '';
+      pendingFiles.forEach((f, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = `<span>${f.name}</span><button aria-label="Remover ${f.name}">✕</button>`;
+        chip.querySelector('button').onclick = () => {
+          pendingFiles.splice(i, 1);
+          renderChips();
+          sendBtn.disabled = !input.value.trim() && pendingFiles.length === 0;
+        };
+        fileChipRow.appendChild(chip);
+      });
+    }
+
+    function addMessage(role, text, fileNames = []) {
+      emptyState.style.display = 'none';
+      const msg = document.createElement('div');
+      msg.className = 'msg ' + role;
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+      if (fileNames.length) {
+        const tag = document.createElement('div');
+        tag.className = 'files-tag';
+        tag.textContent = '📎 ' + fileNames.join(', ');
+        msg.appendChild(tag);
+      }
+      messagesEl.appendChild(msg);
+      mainEl.scrollTop = mainEl.scrollHeight;
+      return bubble;
+    }
+
+    function addThinking() {
+      const msg = document.createElement('div');
+      msg.className = 'msg bot';
+      msg.id = 'thinking-msg';
+      msg.innerHTML = '<div class="bubble thinking"><span></span><span></span><span></span></div>';
+      messagesEl.appendChild(msg);
+      mainEl.scrollTop = mainEl.scrollHeight;
+    }
+    function removeThinking() {
+      document.getElementById('thinking-msg')?.remove();
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text && pendingFiles.length === 0) return;
+
+      addMessage('user', text, pendingFiles.map(f => f.name));
+
+      const formData = new FormData();
+      formData.append('message', text);
+      if (currentConversationId) formData.append('conversationId', currentConversationId);
+      formData.append('webSearch', String(webSearchEnabled));
+      pendingFiles.forEach(f => formData.append('files', f));
+
+      input.value = '';
+      autoGrow();
+      pendingFiles = [];
+      renderChips();
+      sendBtn.disabled = true;
+      addThinking();
+
+      try {
+        const res = await fetch('/api/chat', { method: 'POST', body: formData });
+        const data = await res.json();
+        removeThinking();
+
+        if (data.error) {
+          addMessage('bot', '⚠️ ' + data.error);
+        } else {
+          renderBotBubble(data.reply, data.downloadMarker || null);
+          currentConversationId = data.conversationId;
+          loadConversations();
+        }
+      } catch {
+        removeThinking();
+        addMessage('bot', '⚠️ Não consegui conectar ao servidor.');
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    resetBtn.addEventListener('click', startNewConversation);
+    newChatBtn.addEventListener('click', startNewConversation);
+
+    // ── Toggle busca na web ───────────────────────────────────────────────────
+    const webStatus = document.getElementById('web-search-status');
+
+    function updateWebSearchUI() {
+      webSearchBtn.setAttribute('aria-pressed', String(webSearchEnabled));
+      webSearchBtn.title = webSearchEnabled ? 'Busca na web: ativada' : 'Busca na web: desativada';
+      if (webSearchEnabled) {
+        webStatus.className = 'web-status on';
+        webStatus.title = 'Busca na web ativada';
+      } else {
+        webStatus.className = 'web-status off';
+        webStatus.title = 'Busca na web desativada';
+      }
+    }
+
+    webSearchBtn.addEventListener('click', () => {
+      webSearchEnabled = !webSearchEnabled;
+      updateWebSearchUI();
+    });
+
+    // ── Queima de arquivo ─────────────────────────────────────────────────────
+    burnBtn.addEventListener('click', async () => {
+      const ok = confirm(
+        '🔥 Queima de arquivo\n\nIsso vai apagar permanentemente TODO o histórico de conversas e arquivos exportados.\n\nTem certeza?'
+      );
+      if (!ok) return;
+      try {
+        const res = await fetch('/api/conversations', { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        startNewConversation();
+      } catch {
+        alert('Falha ao apagar histórico. Tente novamente.');
+      }
+    });
+
+    loadConversations();
+  </script>
+
+</body>
+
+</html>
