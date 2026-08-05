@@ -64,6 +64,26 @@ para uso diário. Configure um provedor real em **Authentication → Emails → 
 Settings** (Resend com o domínio `areesa.com.br` é o caminho mais curto) antes de
 abrir o acesso para o time.
 
+### Template do magic link (obrigatório)
+
+Em **Authentication → Emails → Templates → Magic Link**, troque o link do corpo
+do e-mail por:
+
+```html
+<a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=magiclink">Entrar no Areesa _cerebro</a>
+```
+
+O template padrão usa `{{ .ConfirmationURL }}`, que dispara o fluxo **PKCE**: o
+link só funciona no mesmo navegador que o solicitou, porque o *code verifier*
+fica guardado ali. Quem pede o link no computador e abre o e-mail no celular
+recebe `PKCE code verifier not found in storage` — e o mesmo acontece quando um
+antivírus de e-mail corporativo abre o link antes da pessoa.
+
+O `token_hash` não depende de nada guardado localmente, então funciona em
+qualquer aparelho. Usar `{{ .RedirectTo }}` em vez de `{{ .SiteURL }}` mantém o
+link correto tanto em localhost quanto em produção, sem precisar trocar a
+configuração ao alternar entre os dois.
+
 ---
 
 ## 2. Variáveis de ambiente
