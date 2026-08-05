@@ -28,6 +28,19 @@ interface Props {
 /** Id gerado no cliente ainda não existe no banco — nada de editar ou exportar. */
 const ehLocal = (id: string) => id.startsWith('local-');
 
+const ALTURA_MAXIMA_EDICAO = 420;
+
+/**
+ * Cresce o campo com o texto e só liga a rolagem depois do teto — deixar o
+ * overflow em `auto` faz surgir uma barra por arredondamento de subpixel.
+ */
+function ajustarAltura(campo: HTMLTextAreaElement) {
+  campo.style.height = 'auto';
+  const desejada = campo.scrollHeight;
+  campo.style.height = `${Math.min(desejada, ALTURA_MAXIMA_EDICAO)}px`;
+  campo.style.overflowY = desejada > ALTURA_MAXIMA_EDICAO ? 'auto' : 'hidden';
+}
+
 export function Mensagem({ mensagem, gerando = false, aoEditar, aoRefazer, bloqueado }: Props) {
   if (mensagem.papel === 'user') {
     return (
@@ -118,8 +131,7 @@ function MensagemUsuario({
     if (!campo) return;
     campo.focus();
     campo.setSelectionRange(campo.value.length, campo.value.length);
-    campo.style.height = 'auto';
-    campo.style.height = `${campo.scrollHeight}px`;
+    ajustarAltura(campo);
   }, [editando]);
 
   function confirmar() {
@@ -146,8 +158,7 @@ function MensagemUsuario({
           value={rascunho}
           onChange={(e) => {
             setRascunho(e.target.value);
-            e.target.style.height = 'auto';
-            e.target.style.height = `${e.target.scrollHeight}px`;
+            ajustarAltura(e.target);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {

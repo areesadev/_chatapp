@@ -23,6 +23,9 @@ interface OpcoesEnvio {
   substituirAPartirDe?: string;
 }
 
+/** Teto do campo de digitação, em pixels, antes de a rolagem entrar. */
+const ALTURA_MAXIMA_CAMPO = 260;
+
 export function Chat({
   conversaIdInicial,
   mensagensIniciais,
@@ -53,12 +56,15 @@ export function Chat({
     fimRef.current?.scrollIntoView({ behavior: gerando ? 'auto' : 'smooth' });
   }, [mensagens, gerando]);
 
-  // Altura do campo acompanha o conteúdo, até um teto.
+  // Altura do campo acompanha o conteúdo, até um teto. A rolagem só entra
+  // depois do teto — senão a barra aparece por arredondamento de subpixel.
   useEffect(() => {
     const campo = campoRef.current;
     if (!campo) return;
     campo.style.height = 'auto';
-    campo.style.height = `${Math.min(campo.scrollHeight, 260)}px`;
+    const desejada = campo.scrollHeight;
+    campo.style.height = `${Math.min(desejada, ALTURA_MAXIMA_CAMPO)}px`;
+    campo.style.overflowY = desejada > ALTURA_MAXIMA_CAMPO ? 'auto' : 'hidden';
   }, [entrada]);
 
   useEffect(() => () => abortadorRef.current?.abort(), []);

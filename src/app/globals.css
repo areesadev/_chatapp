@@ -104,6 +104,13 @@ table,
   cursor: not-allowed;
 }
 
+/* A altura é calculada em JS a partir do scrollHeight; deixar o overflow em
+   `auto` faz surgir uma barra por diferença de arredondamento de 1px. O próprio
+   JS liga a rolagem quando o texto passa da altura máxima. */
+textarea.campo {
+  overflow-y: hidden;
+}
+
 select.campo {
   cursor: pointer;
   padding-right: 2.25rem;
