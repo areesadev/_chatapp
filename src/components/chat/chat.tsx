@@ -18,6 +18,11 @@ interface Props {
   nomeUsuario: string;
 }
 
+interface OpcoesEnvio {
+  /** Apaga esta mensagem e as seguintes antes de gravar a nova. */
+  substituirAPartirDe?: string;
+}
+
 export function Chat({
   conversaIdInicial,
   mensagensIniciais,
@@ -44,7 +49,6 @@ export function Chat({
   const fimRef = useRef<HTMLDivElement>(null);
   const campoRef = useRef<HTMLTextAreaElement>(null);
 
-  // Rola para o fim a cada token novo.
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: gerando ? 'auto' : 'smooth' });
   }, [mensagens, gerando]);
@@ -54,43 +58,55 @@ export function Chat({
     const campo = campoRef.current;
     if (!campo) return;
     campo.style.height = 'auto';
-    campo.style.height = `${Math.min(campo.scrollHeight, 200)}px`;
+    campo.style.height = `${Math.min(campo.scrollHeight, 260)}px`;
   }, [entrada]);
 
   useEffect(() => () => abortadorRef.current?.abort(), []);
 
   const enviar = useCallback(
-    async (texto: string) => {
+    async (texto: string, opcoes: OpcoesEnvio = {}) => {
       const conteudo = texto.trim();
       if (!conteudo || gerando || !modeloId) return;
 
       setErroGlobal(null);
-      setEntrada('');
       setGerando(true);
 
       const idProvisorio = `local-${Date.now()}`;
       const idResposta = `${idProvisorio}-resposta`;
 
-      setMensagens((atuais) => [
-        ...atuais,
-        { id: idProvisorio, papel: 'user', conteudo },
-        { id: idResposta, papel: 'assistant', conteudo: '' },
-      ]);
+      setMensagens((atuais) => {
+        // Ao editar ou refazer, tudo a partir do ponto substituído sai da tela
+        // antes de a nova resposta começar a chegar.
+        const base = opcoes.substituirAPartirDe
+          ? atuais.slice(0, atuais.findIndex((m) => m.id === opcoes.substituirAPartirDe))
+          : atuais;
+
+        return [
+          ...base,
+          { id: idProvisorio, papel: 'user', conteudo },
+          { id: idResposta, papel: 'assistant', conteudo: '' },
+        ];
+      });
 
       const abortador = new AbortController();
       abortadorRef.current = abortador;
 
-      const atualizarResposta = (mudanca: Partial<MensagemVisivel>) =>
-        setMensagens((atuais) =>
-          atuais.map((m) => (m.id === idResposta ? { ...m, ...mudanca } : m)),
-        );
+      const atualizar = (id: string, mudanca: Partial<MensagemVisivel>) =>
+        setMensagens((atuais) => atuais.map((m) => (m.id === id ? { ...m, ...mudanca } : m)));
 
       try {
         const resposta = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: abortador.signal,
-          body: JSON.stringify({ mensagem: conteudo, conversaId, skillId, modeloId, buscaWeb }),
+          body: JSON.stringify({
+            mensagem: conteudo,
+            conversaId,
+            skillId,
+            modeloId,
+            buscaWeb,
+            substituirAPartirDe: opcoes.substituirAPartirDe ?? null,
+          }),
         });
 
         if (!resposta.ok) {
@@ -132,30 +148,28 @@ export function Chat({
                   // remontaria o componente e cortaria o stream em andamento.
                   window.history.replaceState(null, '', `/chat/${id}`);
                 }
+                // Id real da pergunta — é o que habilita editá-la depois.
+                const idUsuario = evento.mensagemUsuarioId as string | null;
+                if (idUsuario) atualizar(idProvisorio, { id: idUsuario });
                 break;
               }
               case 'citacoes':
-                atualizarResposta({ citacoes: evento.citacoes as Citacao[] });
+                atualizar(idResposta, { citacoes: evento.citacoes as Citacao[] });
                 break;
               case 'texto':
                 acumuladoTexto += evento.texto as string;
-                atualizarResposta({ conteudo: acumuladoTexto });
+                atualizar(idResposta, { conteudo: acumuladoTexto });
                 break;
               case 'raciocinio':
                 acumuladoRaciocinio += evento.texto as string;
-                atualizarResposta({ raciocinio: acumuladoRaciocinio });
+                atualizar(idResposta, { raciocinio: acumuladoRaciocinio });
                 break;
               case 'erro':
-                atualizarResposta({ erro: evento.mensagem as string });
+                atualizar(idResposta, { erro: evento.mensagem as string });
                 break;
               case 'fim': {
-                // Troca o id local pelo id real para liberar a exportação.
                 const idReal = evento.mensagemId as string | null;
-                if (idReal) {
-                  setMensagens((atuais) =>
-                    atuais.map((m) => (m.id === idResposta ? { ...m, id: idReal } : m)),
-                  );
-                }
+                if (idReal) atualizar(idResposta, { id: idReal });
                 break;
               }
             }
@@ -163,7 +177,7 @@ export function Chat({
         }
       } catch (erro) {
         if (abortador.signal.aborted) {
-          atualizarResposta({ erro: 'Geração interrompida.' });
+          atualizar(idResposta, { erro: 'Geração interrompida.' });
         } else {
           const mensagem = erro instanceof Error ? erro.message : 'Erro inesperado.';
           setErroGlobal(mensagem);
@@ -172,12 +186,28 @@ export function Chat({
       } finally {
         setGerando(false);
         abortadorRef.current = null;
-        // Atualiza a lista lateral (título e ordem) sem recarregar a página.
         router.refresh();
       }
     },
     [buscaWeb, conversaId, gerando, modeloId, router, skillId],
   );
+
+  /** Reenvia a pergunta editada, descartando o que veio depois dela. */
+  function editar(mensagemId: string, novoTexto: string) {
+    void enviar(novoTexto, { substituirAPartirDe: mensagemId });
+  }
+
+  /** Refaz a resposta a partir da pergunta imediatamente anterior a ela. */
+  function refazer(indiceResposta: number) {
+    for (let i = indiceResposta - 1; i >= 0; i--) {
+      const anterior = mensagens[i];
+      if (anterior.papel === 'user' && !anterior.id.startsWith('local-')) {
+        void enviar(anterior.conteudo, { substituirAPartirDe: anterior.id });
+        return;
+      }
+    }
+    setErroGlobal('Não foi possível identificar a pergunta que originou esta resposta.');
+  }
 
   async function alternarCompartilhamento() {
     if (!conversaId) return;
@@ -200,8 +230,16 @@ export function Chat({
   function aoTeclar(evento: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (evento.key === 'Enter' && !evento.shiftKey) {
       evento.preventDefault();
-      void enviar(entrada);
+      const texto = entrada;
+      setEntrada('');
+      void enviar(texto);
     }
+  }
+
+  function enviarDoCampo() {
+    const texto = entrada;
+    setEntrada('');
+    void enviar(texto);
   }
 
   const semModelos = modelos.length === 0;
@@ -209,22 +247,16 @@ export function Chat({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {conversaId && (
-        <header className="flex items-center justify-end border-b border-borda px-4 py-2">
-          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-texto-suave">
-            <input
-              type="checkbox"
-              checked={compartilhada}
-              onChange={alternarCompartilhamento}
-            />
-            {compartilhada
-              ? 'Compartilhada com o time'
-              : 'Compartilhar com o time'}
+        <header className="flex items-center justify-end border-b border-borda px-6 py-3">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-texto-suave">
+            <input type="checkbox" checked={compartilhada} onChange={alternarCompartilhamento} />
+            {compartilhada ? 'Compartilhada com o time' : 'Compartilhar com o time'}
           </label>
         </header>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+        <div className="mx-auto w-full max-w-3xl space-y-8 px-6 py-8">
           {mensagens.length === 0 ? (
             <BoasVindas
               nome={nomeUsuario}
@@ -236,20 +268,30 @@ export function Chat({
               }}
             />
           ) : (
-            mensagens.map((mensagem, indice) => (
-              <Mensagem
-                key={mensagem.id}
-                mensagem={mensagem}
-                gerando={gerando && indice === mensagens.length - 1 && mensagem.papel === 'assistant'}
-              />
-            ))
+            mensagens.map((mensagem, indice) => {
+              const ehUltima = indice === mensagens.length - 1;
+              return (
+                <Mensagem
+                  key={mensagem.id}
+                  mensagem={mensagem}
+                  gerando={gerando && ehUltima && mensagem.papel === 'assistant'}
+                  bloqueado={gerando}
+                  aoEditar={editar}
+                  aoRefazer={
+                    mensagem.papel === 'assistant' && !gerando
+                      ? () => refazer(indice)
+                      : undefined
+                  }
+                />
+              );
+            })
           )}
           <div ref={fimRef} />
         </div>
       </div>
 
       <div className="border-t border-borda bg-fundo">
-        <div className="mx-auto w-full max-w-3xl space-y-2.5 px-4 py-3">
+        <div className="mx-auto w-full max-w-3xl space-y-4 px-6 py-4">
           <Seletores
             skills={skills}
             modelos={modelos}
@@ -263,18 +305,18 @@ export function Chat({
           />
 
           {erroGlobal && (
-            <p role="alert" className="text-xs text-alerta">
+            <p role="alert" className="text-sm text-alerta">
               {erroGlobal}
             </p>
           )}
 
           {semModelos ? (
-            <p className="rounded-lg border border-borda bg-superficie px-3 py-2.5 text-xs text-texto-suave">
+            <p className="rounded-xl border border-borda bg-superficie px-4 py-4 text-sm text-texto-suave">
               Nenhum modelo ativo. O administrador precisa habilitar ao menos um modelo antes
               de iniciar uma conversa.
             </p>
           ) : (
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-3">
               <textarea
                 ref={campoRef}
                 rows={1}
@@ -282,26 +324,23 @@ export function Chat({
                 onChange={(e) => setEntrada(e.target.value)}
                 onKeyDown={aoTeclar}
                 placeholder="Pergunte, peça uma análise ou cole uma transcrição…"
-                className="max-h-[200px] min-h-[44px] flex-1 resize-none rounded-lg border border-borda
-                           bg-fundo px-3 py-2.5 text-sm leading-relaxed placeholder:text-texto-tenue
-                           focus:outline-none focus:ring-2 focus:ring-texto"
+                className="campo max-h-[260px] resize-none leading-relaxed"
               />
 
               {gerando ? (
                 <button
                   type="button"
                   onClick={() => abortadorRef.current?.abort()}
-                  className="h-[44px] shrink-0 rounded-lg border border-borda px-4 text-sm hover:bg-superficie"
+                  className="botao botao-secundario shrink-0"
                 >
                   Parar
                 </button>
               ) : (
                 <button
                   type="button"
-                  onClick={() => void enviar(entrada)}
+                  onClick={enviarDoCampo}
                   disabled={!entrada.trim()}
-                  className="h-[44px] shrink-0 rounded-lg bg-inverso-fundo px-4 text-sm font-medium
-                             text-inverso-texto transition-opacity hover:opacity-90 disabled:opacity-40"
+                  className="botao botao-primario shrink-0"
                 >
                   Enviar
                 </button>
@@ -309,9 +348,7 @@ export function Chat({
             </div>
           )}
 
-          <p className="text-[11px] text-texto-tenue">
-            Enter envia · Shift+Enter quebra linha
-          </p>
+          <p className="text-sm text-texto-tenue">Enter envia · Shift+Enter quebra linha</p>
         </div>
       </div>
     </div>

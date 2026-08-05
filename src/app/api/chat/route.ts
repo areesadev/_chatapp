@@ -24,6 +24,11 @@ interface CorpoRequisicao {
   skillId?: string | null;
   modeloId?: string | null;
   buscaWeb?: boolean;
+  /**
+   * Id de uma mensagem do usuário. Ela e tudo que veio depois são apagados
+   * antes de gravar a nova — é o que sustenta tanto editar quanto refazer.
+   */
+  substituirAPartirDe?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -155,11 +160,33 @@ export async function POST(request: NextRequest) {
       .eq('id', conversaId);
   }
 
-  await supabase.from('mensagens').insert({
-    conversa_id: conversaId,
-    papel: 'user',
-    conteudo: textoUsuario,
-  });
+  // Editar ou refazer: descarta o trecho a ser reescrito antes de gravar de novo.
+  if (corpo.substituirAPartirDe) {
+    const { data: alvo } = await supabase
+      .from('mensagens')
+      .select('criado_em')
+      .eq('id', corpo.substituirAPartirDe)
+      .eq('conversa_id', conversaId)
+      .maybeSingle();
+
+    if (alvo) {
+      await supabase
+        .from('mensagens')
+        .delete()
+        .eq('conversa_id', conversaId)
+        .gte('criado_em', alvo.criado_em);
+    }
+  }
+
+  const { data: mensagemUsuario } = await supabase
+    .from('mensagens')
+    .insert({
+      conversa_id: conversaId,
+      papel: 'user',
+      conteudo: textoUsuario,
+    })
+    .select('id')
+    .maybeSingle();
 
   // Descendente + reverse: precisamos das ÚLTIMAS mensagens da conversa.
   // Ordenar ascendente com limit traria as mais antigas e ignoraria o contexto
@@ -206,7 +233,13 @@ export async function POST(request: NextRequest) {
       const enviar = (evento: unknown) =>
         controlador.enqueue(codificador.encode(`${JSON.stringify(evento)}\n`));
 
-      enviar({ tipo: 'conversa', id: idConversa, nova: conversaNova });
+      enviar({
+        tipo: 'conversa',
+        id: idConversa,
+        nova: conversaNova,
+        // O cliente precisa do id real para permitir editar esta mensagem depois.
+        mensagemUsuarioId: mensagemUsuario?.id ?? null,
+      });
 
       if (recuperacao.citacoes.length > 0) {
         enviar({ tipo: 'citacoes', citacoes: recuperacao.citacoes });

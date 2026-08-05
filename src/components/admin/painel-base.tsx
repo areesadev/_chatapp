@@ -160,9 +160,9 @@ export function PainelBase({ documentos, resumo }: Props) {
   }
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-lg font-semibold tracking-tight">Base de conhecimento</h1>
+    <div className="space-y-10">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">Base de conhecimento</h1>
         <p className="text-sm text-texto-suave">
           {resumo.total} {resumo.total === 1 ? 'documento' : 'documentos'} ·{' '}
           {resumo.totalFragmentos} fragmentos indexados
@@ -172,7 +172,7 @@ export function PainelBase({ documentos, resumo }: Props) {
       </header>
 
       {/* ─── Cadastro ─── */}
-      <section className="rounded-xl border border-borda bg-superficie p-4">
+      <section className="rounded-2xl border border-borda bg-superficie p-6">
         <div className="mb-4 flex gap-1">
           {(['arquivo', 'texto', 'link'] as TipoDocumento[]).map((tipo) => (
             <button
@@ -190,10 +190,10 @@ export function PainelBase({ documentos, resumo }: Props) {
           ))}
         </div>
 
-        <form onSubmit={cadastrar} className="space-y-3">
+        <form onSubmit={cadastrar} className="space-y-5">
           {aba === 'arquivo' && (
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="arquivo">
+              <label className="rotulo" htmlFor="arquivo">
                 Arquivo — PDF, DOCX, XLSX, XLS, CSV, TXT, MD ou JSON
               </label>
               <input
@@ -203,9 +203,9 @@ export function PainelBase({ documentos, resumo }: Props) {
                 onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
                 className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm
                            file:mr-3 file:rounded file:border-0 file:bg-superficie-alta
-                           file:px-3 file:py-1 file:text-xs"
+                           file:px-3 file:py-1 file:text-sm"
               />
-              <p className="mt-1 text-[11px] text-texto-tenue">
+              <p className="mt-1 text-sm text-texto-tenue">
                 PDF escaneado como imagem não é lido — nesses casos, use a aba Texto.
               </p>
             </div>
@@ -213,7 +213,7 @@ export function PainelBase({ documentos, resumo }: Props) {
 
           {aba === 'texto' && (
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="conteudo">
+              <label className="rotulo" htmlFor="conteudo">
                 Conteúdo — transcrição de reunião, diretriz, aprendizado
               </label>
               <textarea
@@ -222,15 +222,14 @@ export function PainelBase({ documentos, resumo }: Props) {
                 value={conteudo}
                 onChange={(e) => setConteudo(e.target.value)}
                 placeholder="Cole aqui o texto que deve entrar na base…"
-                className="w-full resize-y rounded-lg border border-borda bg-fundo px-3 py-2 text-sm
-                           placeholder:text-texto-tenue"
+                className="campo resize-y"
               />
             </div>
           )}
 
           {aba === 'link' && (
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="url">
+              <label className="rotulo" htmlFor="url">
                 URL
               </label>
               <input
@@ -239,23 +238,22 @@ export function PainelBase({ documentos, resumo }: Props) {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://areesa.com.br/manifesto"
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm
-                           placeholder:text-texto-tenue"
+                className="campo"
               />
-              <p className="mt-1 text-[11px] text-texto-tenue">
+              <p className="mt-1 text-sm text-texto-tenue">
                 Páginas que só renderizam por JavaScript retornam vazio — use a aba Texto.
               </p>
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             <Campo rotulo="Título" htmlFor="titulo">
               <input
                 id="titulo"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
                 placeholder={arquivo?.name ?? 'Planejamento 2026'}
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+                className="campo"
               />
             </Campo>
 
@@ -264,18 +262,18 @@ export function PainelBase({ documentos, resumo }: Props) {
                 id="descricao"
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+                className="campo"
               />
             </Campo>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <Campo rotulo="Sigilo" htmlFor="sigilo">
               <select
                 id="sigilo"
                 value={sigilo}
                 onChange={(e) => setSigilo(e.target.value as NivelSigilo)}
-                className="w-full rounded-lg border border-borda bg-fundo px-2 py-2 text-sm"
+                className="campo"
               >
                 {(Object.keys(ROTULO_SIGILO) as NivelSigilo[]).map((s) => (
                   <option key={s} value={s}>
@@ -290,7 +288,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                 id="vigencia"
                 value={vigencia}
                 onChange={(e) => setVigencia(e.target.value as VigenciaDocumento)}
-                className="w-full rounded-lg border border-borda bg-fundo px-2 py-2 text-sm"
+                className="campo"
               >
                 {(Object.keys(ROTULO_VIGENCIA) as VigenciaDocumento[]).map((v) => (
                   <option key={v} value={v}>
@@ -306,7 +304,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                 type="date"
                 value={dataReferencia}
                 onChange={(e) => setDataReferencia(e.target.value)}
-                className="w-full rounded-lg border border-borda bg-fundo px-2 py-2 text-sm"
+                className="campo"
               />
             </Campo>
 
@@ -316,20 +314,20 @@ export function PainelBase({ documentos, resumo }: Props) {
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="processo, cliente"
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+                className="campo"
               />
             </Campo>
           </div>
 
           {sigilo === 'confidencial' && (
-            <p className="text-[11px] text-atencao">
+            <p className="text-sm text-atencao">
               Documento confidencial nunca é enviado a modelos gratuitos, nem para usuários
               com nível de acesso menor.
             </p>
           )}
 
           {aviso && (
-            <p className={`text-xs ${aviso.tipo === 'erro' ? 'text-alerta' : 'text-texto-suave'}`}>
+            <p className={`text-sm ${aviso.tipo === 'erro' ? 'text-alerta' : 'text-texto-suave'}`}>
               {aviso.texto}
             </p>
           )}
@@ -338,8 +336,7 @@ export function PainelBase({ documentos, resumo }: Props) {
             <button
               type="submit"
               disabled={ocupado}
-              className="rounded-lg bg-inverso-fundo px-4 py-2 text-sm font-medium text-inverso-texto
-                         transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="botao botao-primario"
             >
               {ocupado ? 'Processando…' : 'Adicionar e indexar'}
             </button>
@@ -349,8 +346,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                 type="button"
                 onClick={() => indexar()}
                 disabled={ocupado}
-                className="rounded-lg border border-borda px-4 py-2 text-sm hover:bg-superficie-alta
-                           disabled:opacity-50"
+                className="botao botao-secundario"
               >
                 Processar fila ({resumo.pendentes})
               </button>
@@ -359,7 +355,7 @@ export function PainelBase({ documentos, resumo }: Props) {
 
           <div>
             {resumo.pendentes > 0 && (
-              <p className="text-[11px] text-texto-tenue">
+              <p className="text-sm text-texto-tenue">
                 A indexação roda ao cadastrar. Este botão é para retomar o que ficou para
                 trás — o cron automático só passa uma vez por dia.
               </p>
@@ -369,8 +365,8 @@ export function PainelBase({ documentos, resumo }: Props) {
       </section>
 
       {/* ─── Lista ─── */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Documentos</h2>
+      <section className="space-y-4">
+        <h2 className="text-lg font-medium">Documentos</h2>
 
         {documentos.length === 0 ? (
           <p className="rounded-xl border border-borda bg-superficie px-4 py-8 text-center text-sm text-texto-suave">
@@ -382,12 +378,12 @@ export function PainelBase({ documentos, resumo }: Props) {
             {documentos.map((documento) => (
               <li
                 key={documento.id}
-                className="rounded-xl border border-borda bg-superficie p-3.5"
+                className="rounded-2xl border border-borda bg-superficie p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{documento.titulo}</p>
-                    <p className="mt-0.5 text-[11px] text-texto-tenue">
+                    <p className="mt-0.5 text-sm text-texto-tenue">
                       {ROTULO_TIPO_DOCUMENTO[documento.tipo]}
                       {' · '}
                       <Estado status={documento.status} />
@@ -396,7 +392,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                       {documento.data_referencia && ` · ref. ${documento.data_referencia}`}
                     </p>
                     {documento.erro_msg && (
-                      <p className="mt-1 text-[11px] leading-snug text-alerta">
+                      <p className="mt-1 text-sm leading-snug text-alerta">
                         {documento.erro_msg}
                       </p>
                     )}
@@ -407,7 +403,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                       value={documento.sigilo}
                       onChange={(e) => alterar(documento.id, { sigilo: e.target.value })}
                       aria-label={`Sigilo de ${documento.titulo}`}
-                      className="rounded border border-borda bg-fundo px-1.5 py-1 text-[11px]"
+                      className="campo h-10 min-h-0 w-auto py-1 text-sm"
                     >
                       {(Object.keys(ROTULO_SIGILO) as NivelSigilo[]).map((s) => (
                         <option key={s} value={s}>
@@ -420,7 +416,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                       value={documento.vigencia}
                       onChange={(e) => alterar(documento.id, { vigencia: e.target.value })}
                       aria-label={`Vigência de ${documento.titulo}`}
-                      className="rounded border border-borda bg-fundo px-1.5 py-1 text-[11px]"
+                      className="campo h-10 min-h-0 w-auto py-1 text-sm"
                     >
                       {(Object.keys(ROTULO_VIGENCIA) as VigenciaDocumento[]).map((v) => (
                         <option key={v} value={v}>
@@ -433,8 +429,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                       type="button"
                       onClick={() => indexar(documento.id)}
                       disabled={ocupado}
-                      className="rounded border border-borda px-2 py-1 text-[11px] hover:bg-superficie-alta
-                                 disabled:opacity-40"
+                      className="botao-mini"
                     >
                       Reindexar
                     </button>
@@ -442,8 +437,7 @@ export function PainelBase({ documentos, resumo }: Props) {
                     <button
                       type="button"
                       onClick={() => apagar(documento)}
-                      className="rounded border border-borda px-2 py-1 text-[11px] text-alerta
-                                 hover:bg-superficie-alta"
+                      className="botao-mini text-alerta"
                     >
                       Apagar
                     </button>
@@ -469,7 +463,7 @@ function Campo({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-texto-suave" htmlFor={htmlFor}>
+      <label className="rotulo" htmlFor={htmlFor}>
         {rotulo}
       </label>
       {children}

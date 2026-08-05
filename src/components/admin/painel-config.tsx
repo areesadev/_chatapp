@@ -14,7 +14,7 @@ export function PainelConfig({ skills, modelos, persona }: Props) {
   return (
     <div className="space-y-10">
       <header className="space-y-1">
-        <h1 className="text-lg font-semibold tracking-tight">Configurações</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
         <p className="text-sm text-texto-suave">
           Persona, papéis do agente e quais modelos aparecem no seletor das conversas.
         </p>
@@ -48,8 +48,8 @@ function SecaoPersona({ persona }: { persona: string }) {
   return (
     <section className="space-y-2">
       <div>
-        <h2 className="text-sm font-medium">Persona</h2>
-        <p className="text-xs text-texto-suave">
+        <h2 className="text-lg font-medium">Persona</h2>
+        <p className="text-sm text-texto-suave">
           Entra em toda conversa, antes das instruções da skill escolhida. Vale para todos os
           modelos.
         </p>
@@ -62,8 +62,7 @@ function SecaoPersona({ persona }: { persona: string }) {
           setTexto(e.target.value);
           setEstado('parado');
         }}
-        className="w-full resize-y rounded-lg border border-borda bg-fundo px-3 py-2.5 font-mono
-                   text-xs leading-relaxed"
+        className="campo resize-y font-mono text-sm leading-relaxed"
       />
 
       <div className="flex items-center gap-3">
@@ -71,12 +70,11 @@ function SecaoPersona({ persona }: { persona: string }) {
           type="button"
           onClick={salvar}
           disabled={estado === 'salvando' || texto === persona}
-          className="rounded-lg bg-inverso-fundo px-4 py-2 text-sm font-medium text-inverso-texto
-                     transition-opacity hover:opacity-90 disabled:opacity-40"
+          className="botao botao-primario"
         >
           {estado === 'salvando' ? 'Salvando…' : 'Salvar persona'}
         </button>
-        {estado === 'salvo' && <span className="text-xs text-texto-suave">Salvo.</span>}
+        {estado === 'salvo' && <span className="text-sm text-texto-suave">Salvo.</span>}
       </div>
     </section>
   );
@@ -133,8 +131,8 @@ function SecaoSkills({ skills }: { skills: Skill[] }) {
     <section className="space-y-2">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-sm font-medium">Skills</h2>
-          <p className="text-xs text-texto-suave">
+          <h2 className="text-lg font-medium">Skills</h2>
+          <p className="text-sm text-texto-suave">
             O papel que o agente assume na conversa. As instruções entram no system prompt
             logo após a persona.
           </p>
@@ -142,19 +140,19 @@ function SecaoSkills({ skills }: { skills: Skill[] }) {
         <button
           type="button"
           onClick={() => setCriando((v) => !v)}
-          className="shrink-0 rounded-lg border border-borda px-3 py-1.5 text-xs hover:bg-superficie"
+          className="botao botao-secundario shrink-0"
         >
           {criando ? 'Cancelar' : 'Nova skill'}
         </button>
       </div>
 
-      {erro && <p className="text-xs text-alerta">{erro}</p>}
+      {erro && <p className="text-sm text-alerta">{erro}</p>}
 
       {criando && <FormularioSkill aoSalvar={criar} aoCancelar={() => setCriando(false)} />}
 
       <ul className="space-y-2">
         {skills.map((skill) => (
-          <li key={skill.id} className="rounded-xl border border-borda bg-superficie p-3.5">
+          <li key={skill.id} className="rounded-2xl border border-borda bg-superficie p-5">
             {editando === skill.id ? (
               <FormularioSkill
                 inicial={skill}
@@ -167,32 +165,31 @@ function SecaoSkills({ skills }: { skills: Skill[] }) {
                   <p className="text-sm font-medium">
                     {skill.nome}
                     {!skill.ativa && (
-                      <span className="ml-2 text-[11px] font-normal text-atencao">oculta</span>
+                      <span className="ml-2 text-sm font-normal text-atencao">oculta</span>
                     )}
                   </p>
-                  <p className="mt-0.5 text-xs text-texto-suave">{skill.descricao}</p>
+                  <p className="mt-0.5 text-sm text-texto-suave">{skill.descricao}</p>
                 </div>
 
                 <div className="flex shrink-0 gap-1.5">
                   <button
                     type="button"
                     onClick={() => setEditando(skill.id)}
-                    className="rounded border border-borda px-2 py-1 text-[11px] hover:bg-superficie-alta"
+                    className="botao-mini"
                   >
                     Editar
                   </button>
                   <button
                     type="button"
                     onClick={() => salvar(skill.id, { ativa: !skill.ativa })}
-                    className="rounded border border-borda px-2 py-1 text-[11px] hover:bg-superficie-alta"
+                    className="botao-mini"
                   >
                     {skill.ativa ? 'Ocultar' : 'Mostrar'}
                   </button>
                   <button
                     type="button"
                     onClick={() => apagar(skill)}
-                    className="rounded border border-borda px-2 py-1 text-[11px] text-alerta
-                               hover:bg-superficie-alta"
+                    className="botao-mini text-alerta"
                   >
                     Apagar
                   </button>
@@ -232,14 +229,14 @@ function FormularioSkill({
         onChange={(e) => setNome(e.target.value)}
         placeholder="Nome — ex.: Auditor de Escopo e Viabilidade"
         required
-        className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+        className="campo"
       />
       <input
         value={descricao}
         onChange={(e) => setDescricao(e.target.value)}
         placeholder="Descrição em uma linha — aparece abaixo do seletor"
         required
-        className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+        className="campo"
       />
       <textarea
         rows={8}
@@ -247,21 +244,19 @@ function FormularioSkill({
         onChange={(e) => setInstrucoes(e.target.value)}
         placeholder="Instruções: o que o agente prioriza neste papel, o que ele nunca deve fazer, o formato de saída esperado."
         required
-        className="w-full resize-y rounded-lg border border-borda bg-fundo px-3 py-2 font-mono
-                   text-xs leading-relaxed"
+        className="campo resize-y font-mono text-sm leading-relaxed"
       />
       <div className="flex gap-2">
         <button
           type="submit"
-          className="rounded-lg bg-inverso-fundo px-3 py-1.5 text-xs font-medium text-inverso-texto
-                     hover:opacity-90"
+          className="botao botao-primario"
         >
           Salvar
         </button>
         <button
           type="button"
           onClick={aoCancelar}
-          className="rounded-lg border border-borda px-3 py-1.5 text-xs hover:bg-superficie-alta"
+          className="botao botao-secundario"
         >
           Cancelar
         </button>
@@ -329,8 +324,8 @@ function SecaoModelos({ modelos }: { modelos: Modelo[] }) {
     <section className="space-y-2">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-sm font-medium">Modelos</h2>
-          <p className="text-xs text-texto-suave">
+          <h2 className="text-lg font-medium">Modelos</h2>
+          <p className="text-sm text-texto-suave">
             Só os modelos ativos aparecem no seletor das conversas.
           </p>
         </div>
@@ -338,20 +333,19 @@ function SecaoModelos({ modelos }: { modelos: Modelo[] }) {
           type="button"
           onClick={sincronizar}
           disabled={sincronizando}
-          className="shrink-0 rounded-lg border border-borda px-3 py-1.5 text-xs hover:bg-superficie
-                     disabled:opacity-50"
+          className="botao botao-secundario shrink-0"
         >
           {sincronizando ? 'Importando…' : 'Importar catálogo OpenRouter'}
         </button>
       </div>
 
-      {aviso && <p className="text-xs text-texto-suave">{aviso}</p>}
+      {aviso && <p className="text-sm text-texto-suave">{aviso}</p>}
 
       <input
         value={busca}
         onChange={(e) => setBusca(e.target.value)}
         placeholder="Buscar modelo… (sem busca, mostra os ativos e todos os da Anthropic)"
-        className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+        className="campo"
       />
 
       <ul className="space-y-1.5">
@@ -365,10 +359,10 @@ function SecaoModelos({ modelos }: { modelos: Modelo[] }) {
               <p className="truncate text-sm">
                 {modelo.nome_exibicao}
                 {modelo.gratuito && (
-                  <span className="ml-2 text-[11px] text-atencao">gratuito</span>
+                  <span className="ml-2 text-sm text-atencao">gratuito</span>
                 )}
               </p>
-              <p className="truncate text-[11px] text-texto-tenue">
+              <p className="truncate text-sm text-texto-tenue">
                 {modelo.provedor}/{modelo.model_id}
                 {!modelo.gratuito &&
                   ` · US$ ${Number(modelo.custo_entrada_usd).toFixed(2)} entrada / ` +
@@ -377,7 +371,7 @@ function SecaoModelos({ modelos }: { modelos: Modelo[] }) {
             </div>
 
             <div className="flex shrink-0 items-center gap-3">
-              <label className="flex items-center gap-1.5 text-[11px] text-texto-suave">
+              <label className="flex items-center gap-1.5 text-sm text-texto-suave">
                 <input
                   type="checkbox"
                   checked={modelo.permite_confidencial}
@@ -388,7 +382,7 @@ function SecaoModelos({ modelos }: { modelos: Modelo[] }) {
                 Confidencial
               </label>
 
-              <label className="flex items-center gap-1.5 text-[11px] text-texto-suave">
+              <label className="flex items-center gap-1.5 text-sm text-texto-suave">
                 <input
                   type="checkbox"
                   checked={modelo.ativo}

@@ -13,22 +13,30 @@ export function FormularioLogin({ destino }: { destino: string }) {
     setErro(null);
     setEstado('enviando');
 
-    const supabase = criarClienteNavegador();
-    const callback = new URL('/auth/callback', window.location.origin);
-    callback.searchParams.set('destino', destino);
+    try {
+      // criarClienteNavegador lança (não devolve erro) quando as variáveis
+      // NEXT_PUBLIC_ não entraram no build — sem o try, o formulário congela
+      // em "Enviando…" sem dizer nada.
+      const supabase = criarClienteNavegador();
+      const callback = new URL('/auth/callback', window.location.origin);
+      callback.searchParams.set('destino', destino);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: callback.toString() },
-    });
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { emailRedirectTo: callback.toString() },
+      });
 
-    if (error) {
-      setErro(traduzir(error.message));
+      if (error) {
+        setErro(traduzir(error.message));
+        setEstado('parado');
+        return;
+      }
+
+      setEstado('enviado');
+    } catch (falha) {
+      setErro(traduzir(falha instanceof Error ? falha.message : 'Falha inesperada no login.'));
       setEstado('parado');
-      return;
     }
-
-    setEstado('enviado');
   }
 
   if (estado === 'enviado') {
@@ -67,8 +75,7 @@ export function FormularioLogin({ destino }: { destino: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="voce@areesa.com.br"
-          className="w-full rounded-lg border border-borda bg-fundo px-3 py-2.5 text-sm
-                     placeholder:text-texto-tenue focus:outline-none focus:ring-2 focus:ring-texto"
+          className="campo"
         />
       </div>
 
@@ -81,13 +88,12 @@ export function FormularioLogin({ destino }: { destino: string }) {
       <button
         type="submit"
         disabled={estado === 'enviando'}
-        className="w-full rounded-lg bg-inverso-fundo px-3 py-2.5 text-sm font-medium
-                   text-inverso-texto transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="botao botao-primario w-full"
       >
         {estado === 'enviando' ? 'Enviando…' : 'Receber link de acesso'}
       </button>
 
-      <p className="text-xs text-texto-tenue">
+      <p className="text-sm text-texto-tenue">
         O acesso é por convite. Se o seu e-mail ainda não foi cadastrado, fale com o
         administrador da agência.
       </p>
@@ -95,11 +101,31 @@ export function FormularioLogin({ destino }: { destino: string }) {
   );
 }
 
+/**
+ * Traduz só os erros que sabemos reconhecer com precisão; o resto passa cru.
+ *
+ * A versão anterior casava qualquer mensagem contendo "invalid" ou "email" e
+ * devolvia "E-mail inválido" — o que transformava chave malformada, provedor
+ * desligado e limite de envio no mesmo diagnóstico errado.
+ */
 function traduzir(mensagem: string): string {
-  if (/rate limit|too many/i.test(mensagem)) {
-    return 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
+  // O limite do SMTP embutido do Supabase é por PROJETO e por hora, somando
+  // todos os e-mails. Dizer "muitas tentativas" faria o usuário achar que o
+  // problema foram os cliques dele.
+  if (/rate limit|too many requests/i.test(mensagem)) {
+    return (
+      'O servidor de e-mail atingiu o limite da hora. Esse limite é do projeto ' +
+      'inteiro, não das suas tentativas — configure um SMTP próprio no Supabase ' +
+      'para removê-lo. Enquanto isso, aguarde até a virada da hora.'
+    );
   }
-  if (/invalid|email/i.test(mensagem)) {
+  if (/url and key are required|invalid api key|no api key/i.test(mensagem)) {
+    return 'Configuração do Supabase ausente ou incorreta neste ambiente. Confira as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.';
+  }
+  if (/signups? (are )?(not allowed|disabled)|email logins are disabled/i.test(mensagem)) {
+    return 'O login por e-mail está desativado no Supabase (Authentication → Providers).';
+  }
+  if (/unable to validate email|invalid format|is invalid/i.test(mensagem)) {
     return 'E-mail inválido.';
   }
   return mensagem;

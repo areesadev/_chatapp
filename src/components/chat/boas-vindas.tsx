@@ -28,19 +28,19 @@ export function BoasVindas({ nome, skills, aoEscolher }: Props) {
   const primeiroNome = nome.trim().split(' ')[0];
 
   return (
-    <div className="space-y-6 py-8">
-      <div className="space-y-1.5">
-        <h1 className="text-xl font-semibold tracking-tight">
+    <div className="space-y-8 py-10">
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {primeiroNome ? `Olá, ${primeiroNome}.` : 'Olá.'}
         </h1>
-        <p className="text-sm text-texto-suave">
+        <p className="text-texto-suave">
           Escolha o papel que eu devo assumir nesta conversa, ou escreva direto no campo
           abaixo.
         </p>
       </div>
 
       {skills.length > 0 && (
-        <ul className="grid gap-2 sm:grid-cols-2">
+        <ul className="grid gap-5 sm:grid-cols-2">
           {skills.map((skill) => (
             <li key={skill.id}>
               <button
@@ -48,11 +48,11 @@ export function BoasVindas({ nome, skills, aoEscolher }: Props) {
                 onClick={() =>
                   aoEscolher(skill, SUGESTOES[skill.slug] ?? `Atue como ${skill.nome}.`)
                 }
-                className="h-full w-full rounded-xl border border-borda bg-superficie p-3.5 text-left
+                className="h-full w-full rounded-2xl border border-borda bg-superficie p-5 text-left
                            transition-colors hover:bg-superficie-alta"
               >
-                <span className="block text-sm font-medium">{skill.nome}</span>
-                <span className="mt-1 block text-xs leading-snug text-texto-suave">
+                <span className="block font-medium">{skill.nome}</span>
+                <span className="mt-2 block text-sm leading-relaxed text-texto-suave">
                   {skill.descricao}
                 </span>
               </button>

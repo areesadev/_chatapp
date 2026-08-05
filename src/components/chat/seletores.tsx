@@ -32,85 +32,93 @@ export function Seletores({
   const gratuitos = modelos.filter((m) => m.gratuito);
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        <label className="sr-only" htmlFor="seletor-skill">
-          Papel do agente nesta conversa
-        </label>
-        <select
-          id="seletor-skill"
-          value={skillId ?? ''}
-          onChange={(e) => aoTrocarSkill(e.target.value || null)}
-          disabled={desabilitado}
-          className="min-w-0 flex-1 rounded-lg border border-borda bg-fundo px-2.5 py-1.5 text-xs
-                     disabled:opacity-50 sm:flex-none"
-        >
-          <option value="">Sem papel definido</option>
-          {skills.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nome}
-            </option>
-          ))}
-        </select>
-
-        <label className="sr-only" htmlFor="seletor-modelo">
-          Modelo de IA
-        </label>
-        <select
-          id="seletor-modelo"
-          value={modeloId ?? ''}
-          onChange={(e) => aoTrocarModelo(e.target.value)}
-          disabled={desabilitado}
-          className="min-w-0 flex-1 rounded-lg border border-borda bg-fundo px-2.5 py-1.5 text-xs
-                     disabled:opacity-50 sm:flex-none"
-        >
-          {pagos.length > 0 && (
-            <optgroup label="Pagos">
-              {pagos.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nome_exibicao}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {gratuitos.length > 0 && (
-            <optgroup label="Gratuitos">
-              {gratuitos.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nome_exibicao}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-
-        <label
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-borda
-                     px-2.5 py-1.5 text-xs text-texto-suave hover:bg-superficie"
-        >
-          <input
-            type="checkbox"
-            checked={buscaWeb}
-            onChange={(e) => aoAlternarBuscaWeb(e.target.checked)}
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <div>
+          <label className="rotulo" htmlFor="seletor-skill">
+            Papel do agente
+          </label>
+          <select
+            id="seletor-skill"
+            value={skillId ?? ''}
+            onChange={(e) => aoTrocarSkill(e.target.value || null)}
             disabled={desabilitado}
-          />
-          Buscar na web
-        </label>
+            className="campo"
+          >
+            <option value="">Sem papel definido</option>
+            {skills.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="rotulo" htmlFor="seletor-modelo">
+            Modelo
+          </label>
+          <select
+            id="seletor-modelo"
+            value={modeloId ?? ''}
+            onChange={(e) => aoTrocarModelo(e.target.value)}
+            disabled={desabilitado}
+            className="campo"
+          >
+            {pagos.length > 0 && (
+              <optgroup label="Pagos">
+                {pagos.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome_exibicao}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {gratuitos.length > 0 && (
+              <optgroup label="Gratuitos">
+                {gratuitos.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome_exibicao}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
+
+        <div className="flex items-end">
+          <label
+            className="flex h-12 cursor-pointer items-center gap-2.5 rounded-xl border border-borda
+                       px-4 text-sm text-texto-suave transition-colors hover:bg-superficie"
+          >
+            <input
+              type="checkbox"
+              checked={buscaWeb}
+              onChange={(e) => aoAlternarBuscaWeb(e.target.checked)}
+              disabled={desabilitado}
+            />
+            Buscar na web
+          </label>
+        </div>
       </div>
 
-      {skill && <p className="text-[11px] leading-snug text-texto-tenue">{skill.descricao}</p>}
+      {(skill || modelo?.gratuito || buscaWeb) && (
+        <div className="space-y-1.5">
+          {skill && <p className="text-sm leading-snug text-texto-tenue">{skill.descricao}</p>}
 
-      {buscaWeb && (
-        <p className="text-[11px] leading-snug text-texto-tenue">
-          A busca na web é cobrada à parte pelo provedor — inclusive em modelo gratuito.
-        </p>
-      )}
+          {modelo?.gratuito && (
+            <p className="text-sm leading-snug text-atencao">
+              Modelo gratuito: o provedor pode usar esta conversa para treinamento, e documentos
+              confidenciais da base não são enviados a ele.
+            </p>
+          )}
 
-      {modelo?.gratuito && (
-        <p className="text-[11px] leading-snug text-atencao">
-          Modelo gratuito: o provedor pode usar esta conversa para treinamento, e documentos
-          confidenciais da base não são enviados a ele.
-        </p>
+          {buscaWeb && (
+            <p className="text-sm leading-snug text-texto-tenue">
+              A busca na web é cobrada à parte pelo provedor — inclusive em modelo gratuito.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

@@ -84,22 +84,22 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
   }
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-lg font-semibold tracking-tight">Usuários</h1>
+    <div className="space-y-10">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">Usuários</h1>
         <p className="text-sm text-texto-suave">
           O acesso é por convite. Sem convite, quem tentar entrar fica com o perfil inativo.
         </p>
       </header>
 
       {/* ─── Convite ─── */}
-      <section className="rounded-xl border border-borda bg-superficie p-4">
+      <section className="rounded-2xl border border-borda bg-superficie p-6">
         <h2 className="mb-3 text-sm font-medium">Convidar colaborador</h2>
 
-        <form onSubmit={convidar} className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <form onSubmit={convidar} className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="conv-email">
+              <label className="rotulo" htmlFor="conv-email">
                 E-mail
               </label>
               <input
@@ -109,32 +109,32 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="pessoa@areesa.com.br"
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+                className="campo"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="conv-nome">
+              <label className="rotulo" htmlFor="conv-nome">
                 Nome
               </label>
               <input
                 id="conv-nome"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+                className="campo"
               />
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="conv-papel">
+              <label className="rotulo" htmlFor="conv-papel">
                 Papel
               </label>
               <select
                 id="conv-papel"
                 value={papel}
                 onChange={(e) => setPapel(e.target.value as PapelUsuario)}
-                className="w-full rounded-lg border border-borda bg-fundo px-2 py-2 text-sm"
+                className="campo"
               >
                 {(Object.keys(ROTULO_PAPEL) as PapelUsuario[]).map((p) => (
                   <option key={p} value={p}>
@@ -145,14 +145,14 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="conv-sigilo">
+              <label className="rotulo" htmlFor="conv-sigilo">
                 Acesso a documentos
               </label>
               <select
                 id="conv-sigilo"
                 value={sigilo}
                 onChange={(e) => setSigilo(e.target.value as NivelSigilo)}
-                className="w-full rounded-lg border border-borda bg-fundo px-2 py-2 text-sm"
+                className="campo"
               >
                 {(Object.keys(ROTULO_SIGILO) as NivelSigilo[]).map((s) => (
                   <option key={s} value={s}>
@@ -163,7 +163,7 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-texto-suave" htmlFor="conv-limite">
+              <label className="rotulo" htmlFor="conv-limite">
                 Teto mensal (US$, 0 = sem limite)
               </label>
               <input
@@ -173,13 +173,13 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
                 step="5"
                 value={limite}
                 onChange={(e) => setLimite(e.target.value)}
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm"
+                className="campo"
               />
             </div>
           </div>
 
           {aviso && (
-            <p className={`text-xs ${aviso.tipo === 'erro' ? 'text-alerta' : 'text-texto-suave'}`}>
+            <p className={`text-sm ${aviso.tipo === 'erro' ? 'text-alerta' : 'text-texto-suave'}`}>
               {aviso.texto}
             </p>
           )}
@@ -187,8 +187,7 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
           <button
             type="submit"
             disabled={ocupado}
-            className="rounded-lg bg-inverso-fundo px-4 py-2 text-sm font-medium text-inverso-texto
-                       transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="botao botao-primario"
           >
             {ocupado ? 'Criando…' : 'Criar convite'}
           </button>
@@ -197,20 +196,20 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
 
       {/* ─── Convites pendentes ─── */}
       {convitesPendentes.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-medium">Convites aguardando primeiro acesso</h2>
-          <ul className="space-y-1.5">
+        <section className="space-y-4">
+          <h2 className="text-lg font-medium">Convites aguardando primeiro acesso</h2>
+          <ul className="space-y-2">
             {convitesPendentes.map((convite) => (
               <li
                 key={convite.email}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border
-                           border-borda bg-superficie px-3.5 py-2.5 text-sm"
+                           border-borda bg-superficie px-5 py-3.5 text-sm"
               >
                 <span>
                   {convite.nome ? `${convite.nome} · ` : ''}
                   {convite.email}
                 </span>
-                <span className="text-[11px] text-texto-tenue">
+                <span className="text-sm text-texto-tenue">
                   {ROTULO_PAPEL[convite.papel as PapelUsuario]} · convidado em{' '}
                   {new Date(convite.criado_em).toLocaleDateString('pt-BR')}
                 </span>
@@ -221,8 +220,8 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
       )}
 
       {/* ─── Usuários ─── */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Com acesso</h2>
+      <section className="space-y-4">
+        <h2 className="text-lg font-medium">Com acesso</h2>
 
         <ul className="space-y-2">
           {perfis.map((perfil) => {
@@ -231,17 +230,17 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
             const estourou = teto > 0 && gasto >= teto;
 
             return (
-              <li key={perfil.id} className="rounded-xl border border-borda bg-superficie p-3.5">
+              <li key={perfil.id} className="rounded-2xl border border-borda bg-superficie p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       {perfil.nome ?? perfil.email}
                       {!perfil.ativo && (
-                        <span className="ml-2 text-[11px] font-normal text-atencao">inativo</span>
+                        <span className="ml-2 text-sm font-normal text-atencao">inativo</span>
                       )}
                     </p>
-                    <p className="text-[11px] text-texto-tenue">{perfil.email}</p>
-                    <p className={`mt-0.5 text-[11px] ${estourou ? 'text-alerta' : 'text-texto-tenue'}`}>
+                    <p className="text-sm text-texto-tenue">{perfil.email}</p>
+                    <p className={`mt-0.5 text-sm ${estourou ? 'text-alerta' : 'text-texto-tenue'}`}>
                       Consumo do mês: US$ {gasto.toFixed(2)}
                       {teto > 0 ? ` de ${teto.toFixed(2)}` : ' · sem teto'}
                       {estourou && ' — bloqueado até o mês virar ou o teto subir'}
@@ -253,7 +252,7 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
                       value={perfil.papel}
                       onChange={(e) => alterar(perfil.id, { papel: e.target.value })}
                       aria-label={`Papel de ${perfil.email}`}
-                      className="rounded border border-borda bg-fundo px-1.5 py-1 text-[11px]"
+                      className="campo h-10 min-h-0 w-auto py-1 text-sm"
                     >
                       {(Object.keys(ROTULO_PAPEL) as PapelUsuario[]).map((p) => (
                         <option key={p} value={p}>
@@ -266,7 +265,7 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
                       value={perfil.sigilo_maximo}
                       onChange={(e) => alterar(perfil.id, { sigiloMaximo: e.target.value })}
                       aria-label={`Acesso a documentos de ${perfil.email}`}
-                      className="rounded border border-borda bg-fundo px-1.5 py-1 text-[11px]"
+                      className="campo h-10 min-h-0 w-auto py-1 text-sm"
                     >
                       {(Object.keys(ROTULO_SIGILO) as NivelSigilo[]).map((s) => (
                         <option key={s} value={s}>
@@ -285,13 +284,13 @@ export function PainelUsuarios({ perfis, convitesPendentes, gastos }: Props) {
                         if (valor !== teto) alterar(perfil.id, { limiteMensalUsd: valor });
                       }}
                       aria-label={`Teto mensal de ${perfil.email}`}
-                      className="w-20 rounded border border-borda bg-fundo px-1.5 py-1 text-[11px]"
+                      className="campo h-10 min-h-0 w-24 py-1 text-sm"
                     />
 
                     <button
                       type="button"
                       onClick={() => alterar(perfil.id, { ativo: !perfil.ativo })}
-                      className="rounded border border-borda px-2 py-1 text-[11px] hover:bg-superficie-alta"
+                      className="botao-mini"
                     >
                       {perfil.ativo ? 'Desativar' : 'Ativar'}
                     </button>

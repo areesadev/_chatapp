@@ -55,13 +55,144 @@ body {
 body {
   background: var(--fundo);
   color: var(--texto);
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--fonte-outfit), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* A Outfit tem numerais proporcionais por padrão; tabulares mantêm colunas de
+   valores alinhadas em tabelas e no painel de consumo. */
+table,
+[data-numerico] {
+  font-variant-numeric: tabular-nums;
 }
 
 *:focus-visible {
   outline: 2px solid var(--texto);
   outline-offset: 2px;
+}
+
+/* ─── Controles ──────────────────────────────────────────────────────────────
+   Altura mínima de 48px em tudo que é clicável: acima dos 44px que Apple e
+   Google recomendam como alvo de toque, e confortável também no mouse. */
+
+.campo {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--borda);
+  border-radius: 0.75rem;
+  background: var(--fundo);
+  color: var(--texto);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  transition: border-color 0.15s ease;
+}
+
+.campo::placeholder {
+  color: var(--texto-tenue);
+}
+
+.campo:hover:not(:disabled) {
+  border-color: var(--texto-tenue);
+}
+
+.campo:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+select.campo {
+  cursor: pointer;
+  padding-right: 2.25rem;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 1.1rem center, right 0.85rem center;
+  background-size: 0.3rem 0.3rem, 0.3rem 0.3rem;
+  background-repeat: no-repeat;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.botao-primario {
+  background: var(--inverso-fundo);
+  color: var(--inverso-texto);
+  border: 1px solid var(--inverso-fundo);
+}
+
+.botao-primario:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.botao-secundario {
+  background: transparent;
+  color: var(--texto);
+  border: 1px solid var(--borda);
+}
+
+.botao-secundario:hover:not(:disabled) {
+  background: var(--superficie-alta);
+}
+
+/* Ações discretas dentro de listas — menores, mas ainda com alvo de 40px. */
+.botao-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--borda);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.botao-mini:hover:not(:disabled) {
+  background: var(--superficie-alta);
+  color: var(--texto);
+}
+
+.botao-mini:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rotulo {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--texto-suave);
+}
+
+input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
+  accent-color: var(--texto);
 }
 
 /* ─── Markdown das respostas ─────────────────────────────────────────────────── */
