@@ -65,9 +65,11 @@ export interface Anexo {
 }
 
 export interface Citacao {
+  /** Vazio quando a fonte é um link colado na conversa, não um documento. */
   documento_id: string;
   titulo: string;
   trecho: string;
+  url?: string;
 }
 
 export interface Mensagem {

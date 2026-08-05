@@ -9,6 +9,7 @@ import {
   type MensagemIA,
 } from '@/lib/ia';
 import { recuperarConhecimento } from '@/lib/conhecimento/buscar';
+import { lerLinksDaMensagem } from '@/lib/conhecimento/links-mensagem';
 import type { Modelo, NivelSigilo, Skill } from '@/lib/tipos';
 
 // O plano Hobby da Vercel limita a 60s. No Pro, suba para 300 — respostas
@@ -216,19 +217,27 @@ export async function POST(request: NextRequest) {
     mensagens.shift();
   }
 
-  // ─── Base de conhecimento ────────────────────────────────────────────────────
-  // A recuperação usa a pergunta atual; o RLS limita ao sigilo do usuário e o
-  // parâmetro do modelo impede que trecho confidencial vá para modelo gratuito.
-  const recuperacao = await recuperarConhecimento(
-    supabase,
-    textoUsuario,
-    (perfil.sigilo_maximo as NivelSigilo) ?? 'publico',
-    modelo.permite_confidencial,
-  );
+  // ─── Contexto da mensagem ────────────────────────────────────────────────────
+  // Base de conhecimento e links colados são buscados em paralelo: um depende
+  // do banco, o outro da rede, e serializar somaria as duas esperas.
+  const [recuperacao, links] = await Promise.all([
+    // O RLS limita ao sigilo do usuário e o parâmetro do modelo impede que
+    // trecho confidencial vá para modelo gratuito.
+    recuperarConhecimento(
+      supabase,
+      textoUsuario,
+      (perfil.sigilo_maximo as NivelSigilo) ?? 'publico',
+      modelo.permite_confidencial,
+    ),
+    lerLinksDaMensagem(textoUsuario),
+  ]);
+
+  const citacoes = [...recuperacao.citacoes, ...links.citacoes];
 
   const instrucoes = [
     montarInstrucoes(persona, contextoAgencia, skill),
     recuperacao.contexto,
+    links.contexto,
   ]
     .filter(Boolean)
     .join('\n\n---\n\n');
@@ -250,8 +259,8 @@ export async function POST(request: NextRequest) {
         mensagemUsuarioId: mensagemUsuario?.id ?? null,
       });
 
-      if (recuperacao.citacoes.length > 0) {
-        enviar({ tipo: 'citacoes', citacoes: recuperacao.citacoes });
+      if (citacoes.length > 0) {
+        enviar({ tipo: 'citacoes', citacoes });
       }
 
       let texto = '';
@@ -306,7 +315,7 @@ export async function POST(request: NextRequest) {
             papel: 'assistant',
             conteudo: texto,
             raciocinio: raciocinio || null,
-            citacoes: recuperacao.citacoes,
+            citacoes,
             modelo_usado: `${modelo.provedor}/${modelo.model_id}`,
             tokens_entrada: tokensEntrada,
             tokens_saida: tokensSaida,

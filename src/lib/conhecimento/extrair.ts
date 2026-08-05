@@ -169,10 +169,12 @@ function formatarJson(texto: string): string {
  */
 export async function extrairDeUrl(
   url: string,
+  sinal?: AbortSignal,
 ): Promise<{ titulo: string | null; texto: string }> {
   const resposta = await fetch(url, {
     headers: { 'User-Agent': 'Areesa-cerebro/1.0 (indexador interno)' },
     redirect: 'follow',
+    signal: sinal,
   });
 
   if (!resposta.ok) {

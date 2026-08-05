@@ -297,7 +297,13 @@ function Recolhivel({ titulo, texto }: { titulo: string; texto: string }) {
   );
 }
 
-/** Documentos da base consultados para esta resposta, na ordem das citações [n]. */
+const numeroDoDoc = (lista: Citacao[], ate: number) =>
+  lista.slice(0, ate + 1).filter((c) => !c.url).length;
+
+const numeroDoLink = (lista: Citacao[], ate: number) =>
+  lista.slice(0, ate + 1).filter((c) => c.url).length;
+
+/** Fontes usadas na resposta: documentos da base e links colados na conversa. */
 function Fontes({ citacoes }: { citacoes: Citacao[] }) {
   const [aberto, setAberto] = useState(false);
 
@@ -319,10 +325,26 @@ function Fontes({ citacoes }: { citacoes: Citacao[] }) {
       {aberto && (
         <ol className="space-y-4 border-t border-borda px-4 py-3.5">
           {citacoes.map((citacao, indice) => (
-            <li key={`${citacao.documento_id}-${indice}`} className="text-sm">
+            <li key={`${citacao.documento_id || citacao.url}-${indice}`} className="text-sm">
               <span className="font-medium">
-                [{indice + 1}] {citacao.titulo}
+                {/* Link colado na conversa e documento da base numeram separado,
+                    espelhando as marcas [L1] e [1] que o agente usa no texto. */}
+                {citacao.url ? `[L${numeroDoLink(citacoes, indice)}]` : `[${numeroDoDoc(citacoes, indice)}]`}{' '}
+                {citacao.titulo}
               </span>
+
+              {citacao.url && (
+                <a
+                  href={citacao.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 block truncate text-texto-tenue underline underline-offset-2
+                             hover:text-texto"
+                >
+                  {citacao.url}
+                </a>
+              )}
+
               <p className="mt-1 leading-relaxed text-texto-suave">{citacao.trecho}…</p>
             </li>
           ))}
