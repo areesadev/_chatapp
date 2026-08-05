@@ -3,11 +3,12 @@ import type { EventoStream, ParametrosConversa } from './tipos';
 const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
 interface PedacoSSE {
+  model?: string;
   choices?: Array<{
     delta?: { content?: string | null; reasoning?: string | null };
     finish_reason?: string | null;
   }>;
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
+  usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
   error?: { message?: string; code?: number };
 }
 
@@ -38,6 +39,11 @@ export async function* conversarOpenRouter({
       },
       body: JSON.stringify({
         model: modelo.model_id,
+        // Cadeia completa em ordem de preferência: se o primeiro estiver sem
+        // cota ou fora do ar, o OpenRouter passa ao seguinte na mesma chamada.
+        ...(modelo.cadeia_de_modelos.length > 0
+          ? { models: modelo.cadeia_de_modelos }
+          : {}),
         max_tokens: modelo.max_saida,
         stream: true,
         stream_options: { include_usage: true },
@@ -71,6 +77,8 @@ export async function* conversarOpenRouter({
   let buffer = '';
   let tokensEntrada = 0;
   let tokensSaida = 0;
+  let custoUsd: number | undefined;
+  let modeloServido = '';
   let recebeuAlgo = false;
   let recebeuRaciocinio = false;
 
@@ -118,9 +126,18 @@ export async function* conversarOpenRouter({
           yield { tipo: 'texto', texto: delta.content };
         }
 
+        // Com roteador, o modelo que atendeu só se sabe pela resposta.
+        if (pedaco.model && pedaco.model !== modeloServido) {
+          modeloServido = pedaco.model;
+          yield { tipo: 'modelo', nome: pedaco.model };
+        }
+
         if (pedaco.usage) {
           tokensEntrada = pedaco.usage.prompt_tokens ?? 0;
           tokensSaida = pedaco.usage.completion_tokens ?? 0;
+          // O preço varia conforme o modelo roteado; o valor informado aqui é o
+          // único confiável, então ele tem precedência sobre a tabela.
+          if (typeof pedaco.usage.cost === 'number') custoUsd = pedaco.usage.cost;
         }
       }
     }
@@ -150,7 +167,7 @@ export async function* conversarOpenRouter({
     return;
   }
 
-  yield { tipo: 'uso', tokensEntrada, tokensSaida };
+  yield { tipo: 'uso', tokensEntrada, tokensSaida, custoUsd };
 }
 
 async function descreverFalha(resposta: Response): Promise<string> {

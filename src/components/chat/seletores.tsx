@@ -102,14 +102,21 @@ export function Seletores({
         </div>
       </div>
 
-      {(skill || modelo?.gratuito || buscaWeb) && (
+      {(skill || (modelo && !modelo.permite_confidencial) || buscaWeb) && (
         <div className="space-y-1.5">
           {skill && <p className="text-sm leading-snug text-texto-tenue">{skill.descricao}</p>}
 
-          {modelo?.gratuito && (
+          {/* O aviso segue `permite_confidencial`, e não `gratuito`: o roteador
+              automático é cobrado, mas pode ser atendido por um provedor
+              gratuito — e aí o conteúdo pode virar treinamento igual. */}
+          {modelo && !modelo.permite_confidencial && (
             <p className="text-sm leading-snug text-atencao">
-              Modelo gratuito: o provedor pode usar esta conversa para treinamento, e documentos
-              confidenciais da base não são enviados a ele.
+              {modelo.gratuito
+                ? 'Modelo gratuito: o provedor pode usar esta conversa para treinamento.'
+                : modelo.cadeia_de_modelos.length > 0
+                  ? 'Pode ser atendido por um provedor gratuito, que usa a conversa para treinamento.'
+                  : 'Este modelo não recebe documentos confidenciais da base.'}{' '}
+              Documentos confidenciais não são enviados a ele.
             </p>
           )}
 

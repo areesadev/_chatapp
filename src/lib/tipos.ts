@@ -42,6 +42,8 @@ export interface Modelo {
   custo_saida_usd: number;
   permite_confidencial: boolean;
   suporta_tools: boolean;
+  /** Cadeia ordenada de slugs a tentar. Vazio = só `model_id`. Só no OpenRouter. */
+  cadeia_de_modelos: string[];
   ativo: boolean;
   ordem: number;
 }

@@ -162,6 +162,10 @@ export function Chat({
               case 'citacoes':
                 atualizar(idResposta, { citacoes: evento.citacoes as Citacao[] });
                 break;
+              case 'modelo':
+                // Com roteador do OpenRouter, quem respondeu só se sabe agora.
+                atualizar(idResposta, { modelo: evento.nome as string });
+                break;
               case 'texto':
                 acumuladoTexto += evento.texto as string;
                 atualizar(idResposta, { conteudo: acumuladoTexto });

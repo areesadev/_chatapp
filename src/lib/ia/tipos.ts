@@ -9,7 +9,12 @@ export interface MensagemIA {
 export type EventoStream =
   | { tipo: 'raciocinio'; texto: string }
   | { tipo: 'texto'; texto: string }
-  | { tipo: 'uso'; tokensEntrada: number; tokensSaida: number }
+  /**
+   * `custoUsd` só vem quando o provedor informa o valor real da chamada — é o
+   * caso do OpenRouter. Sem ele, o custo é calculado pela tabela de preços.
+   */
+  | { tipo: 'uso'; tokensEntrada: number; tokensSaida: number; custoUsd?: number }
+  | { tipo: 'modelo'; nome: string }
   | { tipo: 'erro'; mensagem: string };
 
 export interface ParametrosConversa {

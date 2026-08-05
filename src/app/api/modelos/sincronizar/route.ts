@@ -63,13 +63,18 @@ export async function POST() {
   // conteúdo confidencial) não pode ser revertido por uma ressincronização.
   const { data: jaCadastrados } = await supabase
     .from('modelos')
-    .select('model_id, ativo, permite_confidencial')
+    .select('model_id, ativo, permite_confidencial, cadeia_de_modelos, nome_exibicao')
     .eq('provedor', 'openrouter');
 
   const decisoesAnteriores = new Map(
     (jaCadastrados ?? []).map((m) => [
       m.model_id,
-      { ativo: m.ativo as boolean, permite_confidencial: m.permite_confidencial as boolean },
+      {
+        ativo: m.ativo as boolean,
+        permite_confidencial: m.permite_confidencial as boolean,
+        cadeia_de_modelos: (m.cadeia_de_modelos as string[]) ?? [],
+        nome_exibicao: m.nome_exibicao as string,
+      },
     ]),
   );
 
@@ -82,7 +87,10 @@ export async function POST() {
     return {
       provedor: 'openrouter' as const,
       model_id: m.id,
-      nome_exibicao: m.name || m.id,
+      // Nome e cadeia de fallback podem ter sido configurados à mão; a
+      // sincronização traz preço e contexto, não desfaz curadoria.
+      nome_exibicao: anterior?.nome_exibicao ?? m.name ?? m.id,
+      cadeia_de_modelos: anterior?.cadeia_de_modelos ?? [],
       descricao: m.description?.slice(0, 500) ?? null,
       gratuito,
       contexto: m.context_length ?? null,

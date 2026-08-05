@@ -259,6 +259,10 @@ export async function POST(request: NextRequest) {
         mensagemUsuarioId: mensagemUsuario?.id ?? null,
       });
 
+      // Modelo escolhido. Se um roteador do OpenRouter atender com outro, ele
+      // emite um evento `modelo` depois e a interface se corrige sozinha.
+      enviar({ tipo: 'modelo', nome: modelo.model_id });
+
       if (citacoes.length > 0) {
         enviar({ tipo: 'citacoes', citacoes });
       }
@@ -267,6 +271,9 @@ export async function POST(request: NextRequest) {
       let raciocinio = '';
       let tokensEntrada = 0;
       let tokensSaida = 0;
+      let custoInformado: number | undefined;
+      // Com roteador do OpenRouter, quem responde só se sabe pela resposta.
+      let modeloEfetivo = `${modelo.provedor}/${modelo.model_id}`;
       let mensagemErro: string | null = null;
 
       try {
@@ -289,6 +296,11 @@ export async function POST(request: NextRequest) {
             case 'uso':
               tokensEntrada = evento.tokensEntrada;
               tokensSaida = evento.tokensSaida;
+              custoInformado = evento.custoUsd;
+              break;
+            case 'modelo':
+              modeloEfetivo = `${modelo.provedor}/${evento.nome}`;
+              enviar(evento);
               break;
             case 'erro':
               mensagemErro = evento.mensagem;
@@ -304,7 +316,10 @@ export async function POST(request: NextRequest) {
       // Grava mesmo quando houve erro ou o usuário abortou: o que já foi gerado
       // foi cobrado, e a conversa precisa refletir o que aconteceu.
       if (texto || mensagemErro) {
-        const custo = calcularCusto(modelo, tokensEntrada, tokensSaida);
+        // O valor informado pelo provedor tem precedência: com roteador, o
+        // preço depende do modelo sorteado e a tabela local não sabe qual foi.
+        const custo =
+          custoInformado ?? calcularCusto(modelo, tokensEntrada, tokensSaida);
 
         // O id volta ao cliente no evento `fim` para que a exportação funcione
         // sem recarregar a página — o id local não existe no banco.
@@ -316,7 +331,7 @@ export async function POST(request: NextRequest) {
             conteudo: texto,
             raciocinio: raciocinio || null,
             citacoes,
-            modelo_usado: `${modelo.provedor}/${modelo.model_id}`,
+            modelo_usado: modeloEfetivo,
             tokens_entrada: tokensEntrada,
             tokens_saida: tokensSaida,
             custo_usd: custo,

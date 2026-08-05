@@ -104,6 +104,11 @@ export function Mensagem({ mensagem, gerando = false, aoEditar, aoRefazer, bloqu
             </button>
           )}
           {!ehLocal(mensagem.id) && <Exportar mensagemId={mensagem.id} />}
+          {mensagem.modelo && (
+            <span className="text-sm text-texto-tenue" title={mensagem.modelo}>
+              {nomeCurtoDoModelo(mensagem.modelo)}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -295,6 +300,27 @@ function Recolhivel({ titulo, texto }: { titulo: string; texto: string }) {
       )}
     </div>
   );
+}
+
+/**
+ * `anthropic/claude-opus-5` → `Claude Opus 5`
+ * `openrouter/nvidia/nemotron-nano-9b-v2:free` → `Nemotron Nano 9b V2 (gratuito)`
+ *
+ * O valor cheio fica no title, para quem precisar do slug exato.
+ */
+function nomeCurtoDoModelo(completo: string): string {
+  const [, ...resto] = completo.split('/');
+  const slug = resto.join('/') || completo;
+  const gratuito = slug.endsWith(':free');
+
+  const nome = slug
+    .replace(/:free$/, '')
+    .split('/')
+    .pop()!
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  return gratuito ? `${nome} (gratuito)` : nome;
 }
 
 const numeroDoDoc = (lista: Citacao[], ate: number) =>
