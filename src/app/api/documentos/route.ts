@@ -99,7 +99,9 @@ export async function POST(request: NextRequest) {
       conteudo_bruto: tipo === 'texto' ? corpo.conteudo : null,
       sigilo: corpo.sigilo ?? 'interno',
       vigencia: corpo.vigencia ?? 'vigente',
-      data_referencia: corpo.dataReferencia || null,
+      // Sem data informada, assume hoje: um documento sem data de referência
+      // some da ressalva de "fonte possivelmente desatualizada" na resposta.
+      data_referencia: corpo.dataReferencia || hoje(),
       tags: corpo.tags ?? [],
       status: 'pendente',
       criado_por: user.id,
@@ -118,6 +120,11 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json(data, { status: 201 });
+}
+
+/** Data local em ISO curto (AAAA-MM-DD), formato aceito pela coluna `date`. */
+function hoje(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function sanitizarNome(nome: string): string {

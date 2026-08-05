@@ -8,9 +8,17 @@ const TAMANHO_LOTE = 96;
 
 function cliente(): OpenAI {
   const chave = process.env.OPENAI_API_KEY;
+
   if (!chave) {
-    throw new Error('OPENAI_API_KEY não configurada — a indexação precisa dela.');
+    // Diz onde a variável falta: a mesma mensagem em produção e em
+    // desenvolvimento manda procurar no lugar errado.
+    const ondeCorrigir = process.env.VERCEL
+      ? 'Cadastre OPENAI_API_KEY em Settings → Environment Variables na Vercel e faça um novo deploy'
+      : 'Adicione OPENAI_API_KEY ao arquivo .env.local e reinicie o servidor';
+
+    throw new Error(`OPENAI_API_KEY não configurada. ${ondeCorrigir}.`);
   }
+
   return new OpenAI({ apiKey: chave });
 }
 

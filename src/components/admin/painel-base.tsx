@@ -4,9 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { criarClienteNavegador } from '@/lib/supabase/client';
 import { InstrucoesBase } from './instrucoes-base';
+import { DocumentoItem } from './documento-item';
 import {
   ROTULO_SIGILO,
-  ROTULO_STATUS,
   ROTULO_TIPO_DOCUMENTO,
   ROTULO_VIGENCIA,
   type Documento,
@@ -21,20 +21,24 @@ interface Props {
   instrucoes: string;
 }
 
+interface Aviso {
+  tipo: 'ok' | 'erro' | 'progresso';
+  texto: string;
+}
+
 export function PainelBase({ documentos, resumo, instrucoes }: Props) {
   const router = useRouter();
   const [aba, setAba] = useState<TipoDocumento>('arquivo');
   const [ocupado, setOcupado] = useState(false);
-  const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
 
-  // Campos comuns do formulário
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [sigilo, setSigilo] = useState<NivelSigilo>('interno');
   const [vigencia, setVigencia] = useState<VigenciaDocumento>('vigente');
   const [dataReferencia, setDataReferencia] = useState('');
   const [tags, setTags] = useState('');
-  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [arquivos, setArquivos] = useState<File[]>([]);
   const [conteudo, setConteudo] = useState('');
   const [url, setUrl] = useState('');
 
@@ -43,10 +47,18 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
     setDescricao('');
     setDataReferencia('');
     setTags('');
-    setArquivo(null);
+    setArquivos([]);
     setConteudo('');
     setUrl('');
   }
+
+  const metadados = () => ({
+    descricao,
+    sigilo,
+    vigencia,
+    dataReferencia: dataReferencia || null,
+    tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+  });
 
   async function cadastrar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -54,48 +66,87 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
     setOcupado(true);
 
     try {
-      let storagePath: string | null = null;
-
       if (aba === 'arquivo') {
-        if (!arquivo) throw new Error('Escolha um arquivo.');
-        storagePath = await enviarArquivo(arquivo);
-      }
-
-      const resposta = await fetch('/api/documentos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          titulo: titulo.trim() || arquivo?.name || url,
+        if (arquivos.length === 0) throw new Error('Escolha ao menos um arquivo.');
+        await cadastrarArquivos();
+      } else {
+        const id = await registrar({
+          titulo: titulo.trim() || url,
           tipo: aba,
-          descricao,
-          sigilo,
-          vigencia,
-          dataReferencia: dataReferencia || null,
-          tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-          storagePath,
-          mime: arquivo?.type ?? null,
-          tamanhoBytes: arquivo?.size ?? null,
           conteudo: aba === 'texto' ? conteudo : null,
           fonteUrl: aba === 'link' ? url.trim() : null,
-        }),
-      });
-
-      const corpo = await resposta.json();
-      if (!resposta.ok) throw new Error(corpo.erro ?? 'Falha ao cadastrar.');
-
-      setAviso({ tipo: 'ok', texto: 'Cadastrado. Indexando…' });
-      limpar();
-      router.refresh();
-
-      await indexar(corpo.id);
+        });
+        limpar();
+        router.refresh();
+        await indexar({ documentoId: id });
+      }
     } catch (erro) {
-      setAviso({
-        tipo: 'erro',
-        texto: erro instanceof Error ? erro.message : 'Falha inesperada.',
-      });
+      setAviso({ tipo: 'erro', texto: erro instanceof Error ? erro.message : 'Falha inesperada.' });
     } finally {
       setOcupado(false);
     }
+  }
+
+  /**
+   * Sobe e indexa um arquivo por vez.
+   *
+   * Em série, e não em paralelo: cada indexação chama a OpenAI e o Storage, e
+   * disparar dez de uma vez esbarra em limite de requisição dos dois lados.
+   */
+  async function cadastrarArquivos() {
+    const falhas: string[] = [];
+
+    for (const [indice, arquivo] of arquivos.entries()) {
+      setAviso({
+        tipo: 'progresso',
+        texto: `Enviando ${indice + 1} de ${arquivos.length}: ${arquivo.name}`,
+      });
+
+      try {
+        const storagePath = await enviarArquivo(arquivo);
+        const id = await registrar({
+          // Com vários arquivos, o título de cada um é o próprio nome; o campo
+          // Título só vale quando é um arquivo só.
+          titulo: (arquivos.length === 1 && titulo.trim()) || semExtensao(arquivo.name),
+          tipo: 'arquivo',
+          storagePath,
+          mime: arquivo.type || null,
+          tamanhoBytes: arquivo.size,
+        });
+
+        setAviso({
+          tipo: 'progresso',
+          texto: `Indexando ${indice + 1} de ${arquivos.length}: ${arquivo.name}`,
+        });
+
+        const resultado = await chamarProcessar({ documentoId: id });
+        const erro = resultado.resultados?.find((r) => r.erro)?.erro;
+        if (erro) falhas.push(`${arquivo.name}: ${erro}`);
+      } catch (erro) {
+        falhas.push(`${arquivo.name}: ${erro instanceof Error ? erro.message : 'falhou'}`);
+      }
+    }
+
+    limpar();
+    router.refresh();
+
+    setAviso(
+      falhas.length === 0
+        ? { tipo: 'ok', texto: `${arquivos.length} documento(s) indexado(s).` }
+        : { tipo: 'erro', texto: falhas.join(' · ') },
+    );
+  }
+
+  async function registrar(dados: Record<string, unknown>): Promise<string> {
+    const resposta = await fetch('/api/documentos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...metadados(), ...dados }),
+    });
+
+    const corpo = await resposta.json();
+    if (!resposta.ok) throw new Error(corpo.erro ?? 'Falha ao cadastrar.');
+    return corpo.id as string;
   }
 
   /**
@@ -112,30 +163,37 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
     const dados = await preparo.json();
     if (!preparo.ok) throw new Error(dados.erro ?? 'Falha ao preparar o upload.');
 
-    const supabase = criarClienteNavegador();
-    const { error } = await supabase.storage
-      .from(dados.bucket)
+    const { error } = await criarClienteNavegador()
+      .storage.from(dados.bucket)
       .uploadToSignedUrl(dados.caminho, dados.token, file);
 
-    if (error) throw new Error(`Falha no upload: ${error.message}`);
+    if (error) throw new Error(`falha no upload — ${error.message}`);
     return dados.caminho;
   }
 
-  async function indexar(documentoId?: string) {
+  async function chamarProcessar(corpo: Record<string, unknown>) {
+    const resposta = await fetch('/api/documentos/processar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    });
+
+    return (await resposta.json()) as {
+      resultados?: Array<{ titulo: string; erro?: string }>;
+      restantes?: number;
+      enfileirados?: number;
+      erro?: string;
+    };
+  }
+
+  async function indexar(corpo: Record<string, unknown> = {}) {
     setOcupado(true);
     try {
-      const resposta = await fetch('/api/documentos/processar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(documentoId ? { documentoId } : {}),
-      });
-
-      const corpo = await resposta.json();
-      const falhou = corpo.resultados?.find((r: { erro?: string }) => r.erro);
-
+      const resultado = await chamarProcessar(corpo);
+      const falhou = resultado.resultados?.find((r) => r.erro);
       setAviso(
         falhou
-          ? { tipo: 'erro', texto: falhou.erro }
+          ? { tipo: 'erro', texto: falhou.erro! }
           : { tipo: 'ok', texto: 'Indexação concluída.' },
       );
     } catch {
@@ -146,20 +204,66 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
     }
   }
 
-  async function alterar(id: string, alteracoes: Record<string, unknown>) {
-    await fetch(`/api/documentos/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(alteracoes),
-    });
-    router.refresh();
+  /**
+   * Recoloca tudo na fila e processa em lotes até zerar.
+   *
+   * Em lotes porque a Vercel corta a função em 60s — reindexar a base inteira
+   * numa requisição só estouraria o tempo e deixaria documentos pela metade.
+   */
+  async function reindexarTudo() {
+    if (
+      !confirm(
+        `Reindexar os ${resumo.total} documentos? Cada um é reprocessado do zero e ` +
+          'gera novos embeddings, o que consome créditos da OpenAI.',
+      )
+    )
+      return;
+
+    setOcupado(true);
+    setAviso({ tipo: 'progresso', texto: 'Enfileirando…' });
+
+    try {
+      const inicio = await chamarProcessar({ todos: true });
+      const total = inicio.enfileirados ?? 0;
+      const falhas: string[] = [];
+
+      let restantes = total;
+      let voltas = 0;
+
+      while (restantes > 0 && voltas < 200) {
+        setAviso({
+          tipo: 'progresso',
+          texto: `Reindexando… ${total - restantes} de ${total}`,
+        });
+
+        const lote = await chamarProcessar({});
+        for (const r of lote.resultados ?? []) {
+          if (r.erro) falhas.push(`${r.titulo}: ${r.erro}`);
+        }
+
+        const anterior = restantes;
+        restantes = lote.restantes ?? 0;
+        voltas++;
+
+        // Nenhum avanço significa erro persistente — parar evita laço infinito.
+        if (restantes >= anterior) break;
+      }
+
+      router.refresh();
+      setAviso(
+        falhas.length === 0
+          ? { tipo: 'ok', texto: `${total} documento(s) reindexado(s).` }
+          : { tipo: 'erro', texto: `Com falhas — ${falhas.join(' · ')}` },
+      );
+    } catch {
+      setAviso({ tipo: 'erro', texto: 'Falha ao reindexar.' });
+    } finally {
+      setOcupado(false);
+    }
   }
 
-  async function apagar(documento: Documento) {
-    if (!confirm(`Apagar "${documento.titulo}" e todos os seus fragmentos?`)) return;
-    await fetch(`/api/documentos/${documento.id}`, { method: 'DELETE' });
-    router.refresh();
-  }
+  const corDoAviso =
+    aviso?.tipo === 'erro' ? 'text-alerta' : aviso?.tipo === 'progresso' ? 'text-atencao' : 'text-texto-suave';
 
   return (
     <div className="space-y-10">
@@ -177,13 +281,13 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
 
       {/* ─── Cadastro ─── */}
       <section className="rounded-2xl border border-borda bg-superficie p-6">
-        <div className="mb-4 flex gap-1">
+        <div className="mb-5 flex gap-2">
           {(['arquivo', 'texto', 'link'] as TipoDocumento[]).map((tipo) => (
             <button
               key={tipo}
               type="button"
               onClick={() => setAba(tipo)}
-              className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              className={`rounded-lg px-4 py-2 text-sm transition-colors ${
                 aba === tipo
                   ? 'bg-inverso-fundo text-inverso-texto'
                   : 'text-texto-suave hover:bg-superficie-alta'
@@ -198,20 +302,39 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
           {aba === 'arquivo' && (
             <div>
               <label className="rotulo" htmlFor="arquivo">
-                Arquivo — PDF, DOCX, XLSX, XLS, CSV, TXT, MD ou JSON
+                Arquivos — PDF, DOCX, XLSX, XLS, CSV, TXT, MD ou JSON
               </label>
               <input
                 id="arquivo"
                 type="file"
+                multiple
                 accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.json"
-                onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
-                className="w-full rounded-lg border border-borda bg-fundo px-3 py-2 text-sm
-                           file:mr-3 file:rounded file:border-0 file:bg-superficie-alta
-                           file:px-3 file:py-1 file:text-sm"
+                onChange={(e) => setArquivos(Array.from(e.target.files ?? []))}
+                className="campo file:mr-4 file:rounded-lg file:border-0 file:bg-superficie-alta
+                           file:px-4 file:py-2 file:text-sm"
               />
-              <p className="mt-1 text-sm text-texto-tenue">
-                PDF escaneado como imagem não é lido — nesses casos, use a aba Texto.
-              </p>
+
+              {arquivos.length > 0 ? (
+                <ul className="mt-3 space-y-1 text-sm text-texto-suave">
+                  {arquivos.map((a) => (
+                    <li key={a.name} className="truncate">
+                      {a.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-texto-tenue">
+                  Dá para selecionar vários de uma vez. PDF escaneado como imagem não é lido —
+                  nesses casos, use a aba Texto.
+                </p>
+              )}
+
+              {arquivos.length > 1 && (
+                <p className="mt-2 text-sm text-texto-tenue">
+                  Cada arquivo vira um documento com o próprio nome como título. Sigilo,
+                  vigência, data e tags abaixo valem para todos.
+                </p>
+              )}
             </div>
           )}
 
@@ -222,7 +345,7 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
               </label>
               <textarea
                 id="conteudo"
-                rows={7}
+                rows={8}
                 value={conteudo}
                 onChange={(e) => setConteudo(e.target.value)}
                 placeholder="Cole aqui o texto que deve entrar na base…"
@@ -244,35 +367,45 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
                 placeholder="https://areesa.com.br/manifesto"
                 className="campo"
               />
-              <p className="mt-1 text-sm text-texto-tenue">
+              <p className="mt-2 text-sm text-texto-tenue">
                 Páginas que só renderizam por JavaScript retornam vazio — use a aba Texto.
               </p>
             </div>
           )}
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Campo rotulo="Título" htmlFor="titulo">
+            <div>
+              <label className="rotulo" htmlFor="titulo">
+                Título {arquivos.length > 1 && '(ignorado com vários arquivos)'}
+              </label>
               <input
                 id="titulo"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                placeholder={arquivo?.name ?? 'Planejamento 2026'}
+                disabled={arquivos.length > 1}
+                placeholder={arquivos[0]?.name ?? 'Planejamento 2026'}
                 className="campo"
               />
-            </Campo>
+            </div>
 
-            <Campo rotulo="Descrição (opcional)" htmlFor="descricao">
+            <div>
+              <label className="rotulo" htmlFor="descricao">
+                Descrição (opcional)
+              </label>
               <input
                 id="descricao"
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 className="campo"
               />
-            </Campo>
+            </div>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <Campo rotulo="Sigilo" htmlFor="sigilo">
+            <div>
+              <label className="rotulo" htmlFor="sigilo">
+                Sigilo
+              </label>
               <select
                 id="sigilo"
                 value={sigilo}
@@ -285,9 +418,12 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
                   </option>
                 ))}
               </select>
-            </Campo>
+            </div>
 
-            <Campo rotulo="Vigência" htmlFor="vigencia">
+            <div>
+              <label className="rotulo" htmlFor="vigencia">
+                Vigência
+              </label>
               <select
                 id="vigencia"
                 value={vigencia}
@@ -300,9 +436,12 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
                   </option>
                 ))}
               </select>
-            </Campo>
+            </div>
 
-            <Campo rotulo="Data de referência" htmlFor="data">
+            <div>
+              <label className="rotulo" htmlFor="data">
+                Data de referência
+              </label>
               <input
                 id="data"
                 type="date"
@@ -310,9 +449,13 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
                 onChange={(e) => setDataReferencia(e.target.value)}
                 className="campo"
               />
-            </Campo>
+              <p className="mt-2 text-sm text-texto-tenue">Em branco, assume hoje</p>
+            </div>
 
-            <Campo rotulo="Tags (vírgula)" htmlFor="tags">
+            <div>
+              <label className="rotulo" htmlFor="tags">
+                Tags (vírgula)
+              </label>
               <input
                 id="tags"
                 value={tags}
@@ -320,7 +463,7 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
                 placeholder="processo, cliente"
                 className="campo"
               />
-            </Campo>
+            </div>
           </div>
 
           {sigilo === 'confidencial' && (
@@ -330,19 +473,15 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
             </p>
           )}
 
-          {aviso && (
-            <p className={`text-sm ${aviso.tipo === 'erro' ? 'text-alerta' : 'text-texto-suave'}`}>
-              {aviso.texto}
-            </p>
-          )}
+          {aviso && <p className={`text-sm ${corDoAviso}`}>{aviso.texto}</p>}
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="submit"
-              disabled={ocupado}
-              className="botao botao-primario"
-            >
-              {ocupado ? 'Processando…' : 'Adicionar e indexar'}
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" disabled={ocupado} className="botao botao-primario">
+              {ocupado
+                ? 'Processando…'
+                : arquivos.length > 1
+                  ? `Adicionar ${arquivos.length} arquivos`
+                  : 'Adicionar e indexar'}
             </button>
 
             {resumo.pendentes > 0 && (
@@ -356,98 +495,39 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
               </button>
             )}
           </div>
-
-          <div>
-            {resumo.pendentes > 0 && (
-              <p className="text-sm text-texto-tenue">
-                A indexação roda ao cadastrar. Este botão é para retomar o que ficou para
-                trás — o cron automático só passa uma vez por dia.
-              </p>
-            )}
-          </div>
         </form>
       </section>
 
       {/* ─── Lista ─── */}
       <section className="space-y-4">
-        <h2 className="text-lg font-medium">Documentos</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">Documentos</h2>
+          {resumo.total > 0 && (
+            <button
+              type="button"
+              onClick={reindexarTudo}
+              disabled={ocupado}
+              className="botao botao-secundario"
+            >
+              Reindexar tudo
+            </button>
+          )}
+        </div>
 
         {documentos.length === 0 ? (
-          <p className="rounded-xl border border-borda bg-superficie px-4 py-8 text-center text-sm text-texto-suave">
+          <p className="rounded-2xl border border-borda bg-superficie px-6 py-10 text-center text-sm text-texto-suave">
             A base está vazia. Comece pelo planejamento vigente e pelas transcrições das
             últimas reuniões de diretoria — é o que o agente mais vai precisar.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {documentos.map((documento) => (
-              <li
+              <DocumentoItem
                 key={documento.id}
-                className="rounded-2xl border border-borda bg-superficie p-5"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{documento.titulo}</p>
-                    <p className="mt-0.5 text-sm text-texto-tenue">
-                      {ROTULO_TIPO_DOCUMENTO[documento.tipo]}
-                      {' · '}
-                      <Estado status={documento.status} />
-                      {documento.total_fragmentos > 0 &&
-                        ` · ${documento.total_fragmentos} fragmentos`}
-                      {documento.data_referencia && ` · ref. ${documento.data_referencia}`}
-                    </p>
-                    {documento.erro_msg && (
-                      <p className="mt-1 text-sm leading-snug text-alerta">
-                        {documento.erro_msg}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <select
-                      value={documento.sigilo}
-                      onChange={(e) => alterar(documento.id, { sigilo: e.target.value })}
-                      aria-label={`Sigilo de ${documento.titulo}`}
-                      className="campo h-10 min-h-0 w-auto py-1 text-sm"
-                    >
-                      {(Object.keys(ROTULO_SIGILO) as NivelSigilo[]).map((s) => (
-                        <option key={s} value={s}>
-                          {ROTULO_SIGILO[s]}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={documento.vigencia}
-                      onChange={(e) => alterar(documento.id, { vigencia: e.target.value })}
-                      aria-label={`Vigência de ${documento.titulo}`}
-                      className="campo h-10 min-h-0 w-auto py-1 text-sm"
-                    >
-                      {(Object.keys(ROTULO_VIGENCIA) as VigenciaDocumento[]).map((v) => (
-                        <option key={v} value={v}>
-                          {ROTULO_VIGENCIA[v]}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => indexar(documento.id)}
-                      disabled={ocupado}
-                      className="botao-mini"
-                    >
-                      Reindexar
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => apagar(documento)}
-                      className="botao-mini text-alerta"
-                    >
-                      Apagar
-                    </button>
-                  </div>
-                </div>
-              </li>
+                documento={documento}
+                ocupado={ocupado}
+                aoReindexar={(id) => indexar({ documentoId: id })}
+              />
             ))}
           </ul>
         )}
@@ -456,28 +536,7 @@ export function PainelBase({ documentos, resumo, instrucoes }: Props) {
   );
 }
 
-function Campo({
-  rotulo,
-  htmlFor,
-  children,
-}: {
-  rotulo: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="rotulo" htmlFor={htmlFor}>
-        {rotulo}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function Estado({ status }: { status: Documento['status'] }) {
-  const cor =
-    status === 'erro' ? 'text-alerta' : status === 'indexado' ? 'text-texto-suave' : 'text-atencao';
-
-  return <span className={cor}>{ROTULO_STATUS[status]}</span>;
+function semExtensao(nome: string): string {
+  const ponto = nome.lastIndexOf('.');
+  return ponto > 0 ? nome.slice(0, ponto) : nome;
 }
