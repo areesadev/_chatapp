@@ -10,11 +10,25 @@ const ROTAS_PUBLICAS = ['/login', '/auth', '/acesso-pendente'];
  * consulta ao banco em toda requisição, inclusive assets.
  */
 export async function middleware(request: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const chave = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  // Sem as variáveis, o cliente do Supabase lança e o middleware derruba toda
+  // requisição com um 500 sem explicação. Um 503 legível economiza a caçada.
+  if (!url || !chave) {
+    return new NextResponse(
+      'Configuração ausente: defina NEXT_PUBLIC_SUPABASE_URL e ' +
+        'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY nas variáveis de ambiente do projeto ' +
+        'e faça um novo deploy (variáveis NEXT_PUBLIC_ são embutidas no build).',
+      { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+    );
+  }
+
   let resposta = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    url,
+    chave,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
