@@ -5,6 +5,9 @@ import { gerarEmbeddings, paraVetorPg } from './embeddings';
 
 const BUCKET = 'documentos';
 
+/** Acima disso, "processando" significa que a execução morreu no meio. */
+const MINUTOS_ATE_CONSIDERAR_TRAVADO = 15;
+
 export interface ResultadoIndexacao {
   documentoId: string;
   titulo: string;
@@ -133,10 +136,15 @@ async function obterTexto(documento: DocumentoParaIndexar): Promise<string> {
 export async function processarFila(limite = 5): Promise<ResultadoIndexacao[]> {
   const admin = criarClienteAdmin();
 
+  // Também recolhe o que travou em "processando": se a função serverless bateu
+  // no limite de tempo no meio da extração, o documento fica nesse estado para
+  // sempre e nunca mais seria tentado.
+  const limiteTravado = new Date(Date.now() - MINUTOS_ATE_CONSIDERAR_TRAVADO * 60_000).toISOString();
+
   const { data: pendentes } = await admin
     .from('documentos')
     .select('id')
-    .eq('status', 'pendente')
+    .or(`status.eq.pendente,and(status.eq.processando,atualizado_em.lt.${limiteTravado})`)
     .order('criado_em', { ascending: true })
     .limit(limite);
 

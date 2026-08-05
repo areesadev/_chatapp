@@ -356,6 +356,15 @@ export function PainelBase({ documentos, resumo }: Props) {
               </button>
             )}
           </div>
+
+          <div>
+            {resumo.pendentes > 0 && (
+              <p className="text-[11px] text-texto-tenue">
+                A indexação roda ao cadastrar. Este botão é para retomar o que ficou para
+                trás — o cron automático só passa uma vez por dia.
+              </p>
+            )}
+          </div>
         </form>
       </section>
 

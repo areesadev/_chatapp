@@ -161,11 +161,18 @@ gastar o orçamento de tokens pensando sem chegar a responder.
 ## 7. Deploy na Vercel
 
 Importe o repositório, cadastre as mesmas variáveis e ajuste `NEXT_PUBLIC_APP_URL`.
-O [vercel.json](vercel.json) já registra o cron de indexação a cada 10 minutos.
 
-Uma ressalva de plano: as rotas de chat, indexação e exportação declaram
-`maxDuration = 60`, teto do plano Hobby. Respostas longas do Opus 5 e indexação
-de arquivos grandes passam disso — no Pro, suba para `300`.
+Duas ressalvas do plano **Hobby**, ambas já contornadas no código:
+
+- **Cron uma vez por dia.** O [vercel.json](vercel.json) agenda a indexação às
+  03:00 UTC (meia-noite em Brasília). Isso não atrasa nada no uso normal: o
+  painel dispara a indexação assim que o documento é cadastrado, e o cron é só
+  a rede de segurança para quando o navegador é fechado no meio. Se algo ficar
+  na fila, o botão **Processar fila** resolve na hora. No plano Pro, dá para
+  voltar a `*/10 * * * *`.
+- **Execução limitada a 60s.** As rotas de chat, indexação e exportação declaram
+  `maxDuration = 60`. Respostas longas do Opus 5 e arquivos grandes passam
+  disso — no Pro, suba para `300`.
 
 ---
 
