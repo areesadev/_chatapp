@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { criarClienteNavegador } from '@/lib/supabase/client';
+import { InstrucoesBase } from './instrucoes-base';
 import {
   ROTULO_SIGILO,
   ROTULO_STATUS,
@@ -17,9 +18,10 @@ import {
 interface Props {
   documentos: Documento[];
   resumo: { total: number; totalFragmentos: number; pendentes: number; comErro: number };
+  instrucoes: string;
 }
 
-export function PainelBase({ documentos, resumo }: Props) {
+export function PainelBase({ documentos, resumo, instrucoes }: Props) {
   const router = useRouter();
   const [aba, setAba] = useState<TipoDocumento>('arquivo');
   const [ocupado, setOcupado] = useState(false);
@@ -170,6 +172,8 @@ export function PainelBase({ documentos, resumo }: Props) {
           {resumo.comErro > 0 && ` · ${resumo.comErro} com erro`}
         </p>
       </header>
+
+      <InstrucoesBase valorInicial={instrucoes} />
 
       {/* ─── Cadastro ─── */}
       <section className="rounded-2xl border border-borda bg-superficie p-6">

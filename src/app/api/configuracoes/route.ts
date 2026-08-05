@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { exigirMaster } from '@/lib/permissoes';
 import { registrarAuditoria } from '@/lib/supabase/admin';
 
-const CHAVES_PERMITIDAS = ['persona_base', 'modelo_padrao_slug', 'aviso_modelo_gratuito'];
+const CHAVES_PERMITIDAS = [
+  'persona_base',
+  'contexto_agencia',
+  'modelo_padrao_slug',
+  'aviso_modelo_gratuito',
+];
 
 /** Atualiza uma configuração global. Só chaves conhecidas são aceitas. */
 export async function PATCH(request: NextRequest) {

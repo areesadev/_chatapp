@@ -110,14 +110,20 @@ export async function POST(request: NextRequest) {
     skill = data ?? null;
   }
 
-  const { data: configPersona } = await supabase
+  const { data: configs } = await supabase
     .from('configuracoes')
-    .select('valor')
-    .eq('chave', 'persona_base')
-    .maybeSingle();
+    .select('chave, valor')
+    .in('chave', ['persona_base', 'contexto_agencia']);
 
+  const porChave = new Map((configs ?? []).map((c) => [c.chave, c.valor]));
   const persona =
-    typeof configPersona?.valor === 'string' ? configPersona.valor : PERSONA_PADRAO;
+    typeof porChave.get('persona_base') === 'string'
+      ? (porChave.get('persona_base') as string)
+      : PERSONA_PADRAO;
+  const contextoAgencia =
+    typeof porChave.get('contexto_agencia') === 'string'
+      ? (porChave.get('contexto_agencia') as string)
+      : null;
 
   // ─── Conversa ────────────────────────────────────────────────────────────────
   let conversaId = corpo.conversaId ?? null;
@@ -220,7 +226,10 @@ export async function POST(request: NextRequest) {
     modelo.permite_confidencial,
   );
 
-  const instrucoes = [montarInstrucoes(persona, skill), recuperacao.contexto]
+  const instrucoes = [
+    montarInstrucoes(persona, contextoAgencia, skill),
+    recuperacao.contexto,
+  ]
     .filter(Boolean)
     .join('\n\n---\n\n');
 
